@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: foodsuite
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_TYPE
+        value: memory
+      - key: DEFAULT_TENANT_ID
+        value: demo
+      - key: PORT
+        value: 10000
