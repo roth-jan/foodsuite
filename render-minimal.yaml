@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: foodsuite
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_TYPE
+        value: memory
+      - key: DEFAULT_TENANT_ID
+        value: demo
