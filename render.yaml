@@ -1,7 +1,7 @@
 services:
   - type: web
-    name: foodsuite
-    env: node
+    name: foodsuite-pro
+    runtime: node
     plan: free
     buildCommand: npm install
     startCommand: node server.js
@@ -11,7 +11,11 @@ services:
         value: production
       - key: DB_TYPE
         value: memory
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        generateValue: true
       - key: DEFAULT_TENANT_ID
         value: demo
-      - key: PORT
-        value: 10000
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=512
