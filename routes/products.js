@@ -66,28 +66,32 @@ router.get('/', async (req, res) => {
         console.log(`DB has getProducts method: ${!!db.getProducts}`);
         console.log(`DB has data property: ${!!db.data}`);
         
-        // Use adapter method if available
+        // Use NEW article system method if available
         if (db.getProducts) {
-            console.log('Using db.getProducts method');
+            console.log('Using NEW article system: db.getProducts method');
             const filters = {
+                tenant_id: req.tenantId,
                 search,
                 category,
-                supplier,
-                status,
-                limit: parseInt(limit),
-                offset: (parseInt(page) - 1) * parseInt(limit)
+                supplier_id: supplier,
+                status
             };
             
-            const products = await db.getProducts(req.tenantId, filters);
-            const total = products.length; // Simple count for now
+            const products = await db.getProducts(filters);
+            
+            // Pagination
+            const startIndex = (parseInt(page) - 1) * parseInt(limit);
+            const endIndex = startIndex + parseInt(limit);
+            const paginatedProducts = products.slice(startIndex, endIndex);
             
             res.json({
-                items: products,
+                success: true,
+                items: paginatedProducts,
                 pagination: {
                     page: parseInt(page),
                     limit: parseInt(limit),
-                    totalItems: total,
-                    totalPages: Math.ceil(total / limit)
+                    totalItems: products.length,
+                    totalPages: Math.ceil(products.length / parseInt(limit))
                 }
             });
             return;
@@ -174,6 +178,35 @@ router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
         
+        // Use NEW article system method if available
+        if (db.getProductById) {
+            console.log('Using NEW article system: db.getProductById method');
+            
+            const product = await db.getProductById(parseInt(id));
+            
+            if (!product) {
+                return res.status(404).json({ 
+                    success: false,
+                    error: 'Product not found' 
+                });
+            }
+            
+            // Check tenant access
+            if (product.tenant_id !== req.tenantId && product.tenant_id !== 1) {
+                return res.status(404).json({ 
+                    success: false,
+                    error: 'Product not found' 
+                });
+            }
+            
+            res.json({
+                success: true,
+                data: product
+            });
+            return;
+        }
+        
+        // Legacy fallback
         const product = await db.findById('products', id, req.tenantId);
         
         if (!product) {
@@ -403,6 +436,117 @@ router.put('/:id/stock', async (req, res) => {
         
     } catch (error) {
         console.error('Error updating stock:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// GET /api/products/:id/alternatives - Get alternative supplier articles
+router.get('/:id/alternatives', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Use NEW article system method if available
+        if (db.getProductById) {
+            const product = await db.getProductById(parseInt(id));
+            
+            if (!product) {
+                return res.status(404).json({ 
+                    success: false,
+                    error: 'Product not found' 
+                });
+            }
+            
+            // Check tenant access
+            if (product.tenant_id !== req.tenantId && product.tenant_id !== 1) {
+                return res.status(404).json({ 
+                    success: false,
+                    error: 'Product not found' 
+                });
+            }
+            
+            res.json({
+                success: true,
+                data: {
+                    current_article: {
+                        id: product.id,
+                        name: product.name,
+                        article_number: product.article_number,
+                        supplier_name: product.supplier_name,
+                        price: product.price,
+                        quality_grade: product.quality_grade,
+                        organic: product.organic,
+                        regional: product.regional
+                    },
+                    alternatives: product.alternatives || [],
+                    neutral_article: product.neutral_article
+                }
+            });
+            return;
+        }
+        
+        res.status(404).json({ 
+            success: false,
+            error: 'Alternatives not available with current database setup' 
+        });
+    } catch (error) {
+        console.error('Error fetching product alternatives:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// GET /api/products/neutral/:neutralId/suppliers - Get all suppliers for neutral article
+router.get('/neutral/:neutralId/suppliers', async (req, res) => {
+    try {
+        const { neutralId } = req.params;
+        
+        if (db.data && db.data.supplier_articles) {
+            const alternatives = db.data.supplier_articles
+                .filter(article => 
+                    article.neutral_article_id === parseInt(neutralId) && 
+                    article.status === 'active' &&
+                    (article.tenant_id === req.tenantId || article.tenant_id === 1)
+                )
+                .map(article => {
+                    const supplier = db.data.suppliers.find(s => s.id === article.supplier_id);
+                    return {
+                        id: article.id,
+                        article_number: article.article_number,
+                        name: article.name,
+                        supplier_id: article.supplier_id,
+                        supplier_name: supplier?.name || 'Unbekannt',
+                        price: article.price,
+                        unit: article.unit,
+                        quality_grade: article.quality_grade,
+                        organic: article.organic,
+                        regional: article.regional,
+                        fairtrade: article.fairtrade,
+                        lead_time_days: article.lead_time_days,
+                        availability: article.availability,
+                        nutrition: article.nutrition,
+                        allergens: article.allergens
+                    };
+                })
+                .sort((a, b) => a.price - b.price); // Sortiert nach Preis
+            
+            const neutralArticle = db.data.neutral_articles.find(n => n.id === parseInt(neutralId));
+            
+            res.json({
+                success: true,
+                data: {
+                    neutral_article: neutralArticle,
+                    supplier_articles: alternatives,
+                    total_suppliers: alternatives.length
+                }
+            });
+            return;
+        }
+        
+        res.status(404).json({ 
+            success: false,
+            error: 'Supplier comparison not available' 
+        });
+    } catch (error) {
+        console.error('Error fetching supplier comparison:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

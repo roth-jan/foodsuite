@@ -314,4 +314,159 @@ router.get('/categories/all', async (req, res) => {
     }
 });
 
+// GET /api/recipes/:id/cost - Calculate recipe cost with new article system
+router.get('/:id/cost', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Use NEW article system method if available
+        if (db.calculateRecipeCost) {
+            console.log('Using NEW article system: db.calculateRecipeCost method');
+            
+            const costCalculation = await db.calculateRecipeCost(parseInt(id));
+            
+            if (!costCalculation) {
+                return res.status(404).json({ 
+                    success: false,
+                    error: 'Recipe not found' 
+                });
+            }
+            
+            res.json({
+                success: true,
+                data: costCalculation
+            });
+            return;
+        }
+        
+        // Legacy fallback
+        const recipe = db.data?.recipes?.find(r => r.id === parseInt(id) && r.tenant_id === req.tenantId);
+        
+        if (!recipe) {
+            return res.status(404).json({ 
+                success: false,
+                error: 'Recipe not found' 
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: {
+                recipe_id: recipe.id,
+                recipe_name: recipe.name,
+                total_cost: 0,
+                cost_per_portion: recipe.cost_per_portion || 0,
+                confidence: 'low',
+                warnings: ['Legacy cost calculation - no detailed ingredient tracking'],
+                ingredients: [],
+                currency: 'EUR'
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error calculating recipe cost:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// GET /api/recipes/:id/ingredients - Get recipe ingredients with article details
+router.get('/:id/ingredients', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        if (db.data && db.data.recipe_ingredients_new) {
+            const ingredients = db.data.recipe_ingredients_new
+                .filter(ri => ri.recipe_id === parseInt(id))
+                .map(ingredient => {
+                    let resolvedArticle = null;
+                    let article_name = 'Unbekannt';
+                    let price_info = null;
+                    
+                    // 1. Versuche Lieferantenartikel
+                    if (ingredient.supplier_article_id) {
+                        const supplierArticle = db.data.supplier_articles?.find(a => 
+                            a.id === ingredient.supplier_article_id
+                        );
+                        
+                        if (supplierArticle) {
+                            const supplier = db.data.suppliers?.find(s => s.id === supplierArticle.supplier_id);
+                            resolvedArticle = supplierArticle;
+                            article_name = supplierArticle.name;
+                            price_info = {
+                                price: supplierArticle.price,
+                                unit: supplierArticle.unit,
+                                supplier_name: supplier?.name || 'Unbekannt'
+                            };
+                        }
+                    }
+                    
+                    // 2. Fallback auf neutralen Artikel
+                    if (!resolvedArticle && ingredient.neutral_article_id) {
+                        const neutralArticle = db.data.neutral_articles?.find(n => 
+                            n.id === ingredient.neutral_article_id
+                        );
+                        
+                        if (neutralArticle) {
+                            resolvedArticle = neutralArticle;
+                            article_name = neutralArticle.name;
+                            price_info = {
+                                price: neutralArticle.estimated_price_range.min,
+                                unit: neutralArticle.base_unit,
+                                supplier_name: 'Geschätzt'
+                            };
+                        }
+                    }
+                    
+                    return {
+                        id: ingredient.id,
+                        quantity: ingredient.quantity,
+                        unit: ingredient.unit,
+                        preparation_note: ingredient.preparation_note,
+                        optional: ingredient.optional,
+                        article: {
+                            name: article_name,
+                            type: resolvedArticle ? (ingredient.supplier_article_id ? 'supplier_article' : 'neutral_article') : 'unknown',
+                            ...resolvedArticle
+                        },
+                        price_info: price_info,
+                        sort_order: ingredient.sort_order
+                    };
+                })
+                .sort((a, b) => a.sort_order - b.sort_order);
+            
+            res.json({
+                success: true,
+                data: {
+                    recipe_id: parseInt(id),
+                    ingredients: ingredients,
+                    total_ingredients: ingredients.length
+                }
+            });
+            return;
+        }
+        
+        // Legacy fallback
+        const ingredients = db.data?.recipe_ingredients?.filter(ri => ri.recipe_id === parseInt(id)) || [];
+        
+        res.json({
+            success: true,
+            data: {
+                recipe_id: parseInt(id),
+                ingredients: ingredients.map(ing => ({
+                    id: ing.id,
+                    product_id: ing.product_id,
+                    quantity: ing.quantity,
+                    unit: ing.unit,
+                    notes: ing.notes
+                })),
+                total_ingredients: ingredients.length
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error fetching recipe ingredients:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 module.exports = router;

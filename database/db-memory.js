@@ -1,5 +1,7 @@
 // In-Memory Database for FoodSuite with extensive canteen test data
 const canteenTestData = require('./canteen-test-data');
+const supplierArticlesData = require('./supplier-articles-data');
+const { ArticleSystem } = require('./article-system');
 const userManagement = require('./user-management');
 const { authSchema, systemRoles, systemPermissions, defaultRolePermissions } = require('./auth-schema');
 
@@ -15,11 +17,16 @@ class InMemoryDatabase {
             audit_log: [],
             password_resets: [],
             suppliers: [],
-            products: [],
+            products: [], // Legacy - wird durch supplier_articles ersetzt
             product_categories: [],
             recipe_categories: [],
             recipes: [],
-            recipe_ingredients: [],
+            recipe_ingredients: [], // Legacy - wird durch neue Struktur ersetzt
+            
+            // NEUES ARTIKEL-SYSTEM
+            neutral_articles: [],
+            supplier_articles: [],
+            recipe_ingredients_new: [],
             orders: [],
             order_items: [],
             meal_plans: [],
@@ -113,8 +120,13 @@ class InMemoryDatabase {
 
         // Load extensive test data from canteen-test-data.js
         this.data.suppliers = canteenTestData.suppliers;
-        this.data.products = canteenTestData.products;
+        this.data.products = canteenTestData.products; // Legacy-Kompatibilität
         this.data.recipes = canteenTestData.recipes;
+        
+        // Load new article system data
+        this.data.neutral_articles = supplierArticlesData.neutralArticles;
+        this.data.supplier_articles = supplierArticlesData.supplierArticles;
+        this.data.recipe_ingredients_new = supplierArticlesData.recipeIngredients;
         
         // Fix recipe costs for AI mode differentiation
         this.fixRecipeCosts();
@@ -1102,6 +1114,193 @@ class InMemoryDatabase {
         const portionFactor = Math.max(0.7, 1 - (recipe.portions - 200) / 2000);
         
         return Math.round(baseCost * modifier * portionFactor * 100) / 100;
+    }
+
+    // === NEUES ARTIKEL-SYSTEM METHODEN ===
+    
+    // Erweiterte Produktliste mit Lieferantendaten
+    async getProducts(filters = {}) {
+        const { tenant_id, search, category, supplier_id, status } = filters;
+        
+        // Konvertiere Lieferantenartikel zu legacy Produktformat für Frontend-Kompatibilität
+        let products = this.data.supplier_articles.map(article => {
+            const supplier = this.data.suppliers.find(s => s.id === article.supplier_id);
+            const neutralArticle = this.data.neutral_articles.find(n => n.id === article.neutral_article_id);
+            const categoryObj = this.data.product_categories.find(c => c.id === neutralArticle?.category_id);
+            
+            return {
+                id: article.id,
+                tenant_id: article.tenant_id,
+                name: article.name,
+                article_number: article.article_number, // WICHTIG: Nicht mehr undefined!
+                category: categoryObj?.name || 'Unbekannt',
+                category_id: categoryObj?.id,
+                unit: article.unit,
+                price: article.price,
+                supplier_id: article.supplier_id,
+                supplier_name: supplier?.name || 'Unbekannt',
+                status: article.status,
+                availability: article.availability,
+                
+                // Zusätzliche Lieferantenartikel-Daten
+                nutrition: article.nutrition,
+                allergens: article.allergens,
+                organic: article.organic,
+                regional: article.regional,
+                quality_grade: article.quality_grade,
+                
+                // Bestandsdaten (simuliert)
+                stock: Math.floor(Math.random() * 100) + 10,
+                min_stock: 5,
+                max_stock: 100,
+                
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+        });
+        
+        // Filter anwenden
+        if (tenant_id) {
+            products = products.filter(p => p.tenant_id === tenant_id || p.tenant_id === 1);
+        }
+        
+        if (search) {
+            const searchLower = search.toLowerCase();
+            products = products.filter(p => 
+                p.name.toLowerCase().includes(searchLower) ||
+                p.article_number.toLowerCase().includes(searchLower) ||
+                p.supplier_name.toLowerCase().includes(searchLower)
+            );
+        }
+        
+        if (category && category !== 'all') {
+            products = products.filter(p => p.category === category);
+        }
+        
+        if (supplier_id) {
+            products = products.filter(p => p.supplier_id === supplier_id);
+        }
+        
+        if (status && status !== 'all') {
+            products = products.filter(p => p.status === status);
+        }
+        
+        return products;
+    }
+    
+    // Artikel-Details mit vollständigen Lieferantendaten
+    async getProductById(id) {
+        const article = this.data.supplier_articles.find(a => a.id === id);
+        if (!article) return null;
+        
+        const supplier = this.data.suppliers.find(s => s.id === article.supplier_id);
+        const neutralArticle = this.data.neutral_articles.find(n => n.id === article.neutral_article_id);
+        const category = this.data.product_categories.find(c => c.id === neutralArticle?.category_id);
+        
+        return {
+            ...article,
+            supplier_name: supplier?.name,
+            supplier_details: supplier,
+            neutral_article: neutralArticle,
+            category_name: category?.name,
+            category_details: category,
+            
+            // Alternative Lieferanten für diesen neutralen Artikel
+            alternatives: this.data.supplier_articles
+                .filter(a => a.neutral_article_id === article.neutral_article_id && a.id !== article.id)
+                .map(alt => ({
+                    id: alt.id,
+                    supplier_name: this.data.suppliers.find(s => s.id === alt.supplier_id)?.name,
+                    article_number: alt.article_number,
+                    price: alt.price,
+                    quality_grade: alt.quality_grade,
+                    organic: alt.organic,
+                    regional: alt.regional
+                }))
+        };
+    }
+    
+    // Rezeptkosten mit neuem System berechnen
+    async calculateRecipeCost(recipeId) {
+        const recipe = this.data.recipes.find(r => r.id === recipeId);
+        if (!recipe) return null;
+        
+        const ingredients = this.data.recipe_ingredients_new.filter(ri => ri.recipe_id === recipeId);
+        
+        let totalCost = 0;
+        let confidence = 'high';
+        const warnings = [];
+        const ingredientDetails = [];
+        
+        for (const ingredient of ingredients) {
+            let resolvedArticle = null;
+            let cost = 0;
+            let article_name = 'Unbekannt';
+            
+            // 1. Versuche Lieferantenartikel (Priorität 1)
+            if (ingredient.supplier_article_id) {
+                const supplierArticle = this.data.supplier_articles.find(a => 
+                    a.id === ingredient.supplier_article_id && a.status === 'active'
+                );
+                
+                if (supplierArticle) {
+                    resolvedArticle = supplierArticle;
+                    // Kosten pro Einheit berechnen (Preis ist pro unit, wir brauchen pro kg/l)
+                    const unitWeight = this.parseUnit(supplierArticle.unit);
+                    const costPerKg = supplierArticle.price / unitWeight;
+                    cost = costPerKg * ingredient.quantity;
+                    article_name = supplierArticle.name;
+                }
+            }
+            
+            // 2. Fallback auf neutralen Artikel
+            if (!resolvedArticle && ingredient.neutral_article_id) {
+                const neutralArticle = this.data.neutral_articles.find(n => n.id === ingredient.neutral_article_id);
+                if (neutralArticle) {
+                    resolvedArticle = neutralArticle;
+                    cost = neutralArticle.estimated_price_range.min * ingredient.quantity;
+                    article_name = neutralArticle.name;
+                    confidence = 'medium';
+                    warnings.push(`Geschätzte Kosten für ${article_name} - kein spezifischer Lieferanterartikel`);
+                }
+            }
+            
+            ingredientDetails.push({
+                name: article_name,
+                quantity: ingredient.quantity,
+                unit: ingredient.unit,
+                cost: cost,
+                article: resolvedArticle
+            });
+            
+            totalCost += cost;
+        }
+        
+        return {
+            recipe_id: recipeId,
+            recipe_name: recipe.name,
+            total_cost: totalCost,
+            cost_per_portion: totalCost / recipe.portions,
+            confidence: confidence,
+            warnings: warnings,
+            ingredients: ingredientDetails,
+            currency: 'EUR'
+        };
+    }
+    
+    // Hilfsfunktion: Einheit in kg/l umrechnen
+    parseUnit(unit) {
+        const match = unit.match(/(\d+(?:\.\d+)?)\s*(kg|l|g|ml)/i);
+        if (!match) return 1;
+        
+        const value = parseFloat(match[1]);
+        const unitType = match[2].toLowerCase();
+        
+        if (unitType === 'kg' || unitType === 'l') return value;
+        if (unitType === 'g') return value / 1000;
+        if (unitType === 'ml') return value / 1000;
+        
+        return value;
     }
 }
 
