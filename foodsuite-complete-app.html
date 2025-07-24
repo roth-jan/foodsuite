@@ -8055,82 +8055,175 @@
 
         // ===== RECIPE MANAGEMENT =====
         
-        function editRecipe(recipeId) {
-            const editModal = document.createElement('div');
-            editModal.className = 'modal fade';
-            editModal.innerHTML = `
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Rezept bearbeiten</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label class="form-label">Rezeptname</label>
-                                <input type="text" class="form-control" id="recipeName" value="Beispielrezept ${recipeId}">
+        async function editRecipe(recipeId) {
+            try {
+                // Lade echte Rezeptdaten von der API
+                const recipe = await api.get(`/recipes/${recipeId}`);
+                
+                // Lade Rezeptkategorien
+                const categories = await api.get('/recipes/categories/all');
+                const categoryOptions = categories.map(cat => 
+                    `<option value="${cat.id}" ${cat.id === recipe.category_id ? 'selected' : ''}>${cat.name}</option>`
+                ).join('');
+                
+                // Lade Zutaten mit Artikeldetails
+                const ingredientsData = await api.get(`/recipes/${recipeId}/ingredients`);
+                const ingredients = ingredientsData.data.ingredients || [];
+                
+                // Formatiere Zutaten für Anzeige
+                const ingredientsText = ingredients.map(ing => {
+                    const articleName = ing.article ? ing.article.name : 'Unbekannt';
+                    const preparation = ing.preparation_note ? ` - ${ing.preparation_note}` : '';
+                    return `${ing.quantity}${ing.unit} ${articleName}${preparation}`;
+                }).join('\n');
+                
+                const editModal = document.createElement('div');
+                editModal.className = 'modal fade';
+                editModal.innerHTML = `
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Rezept bearbeiten</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Kategorie</label>
-                                <select class="form-select" id="recipeCategory">
-                                    <option value="appetizer">Vorspeise</option>
-                                    <option value="main">Hauptspeise</option>
-                                    <option value="dessert">Nachspeise</option>
-                                    <option value="soup">Suppe</option>
-                                    <option value="salad">Salat</option>
-                                </select>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">Portionen</label>
-                                        <input type="number" class="form-control" id="servings" value="4">
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Rezeptname</label>
+                                    <input type="text" class="form-control" id="recipeName" value="${recipe.name}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Kategorie</label>
+                                    <select class="form-select" id="recipeCategory">
+                                        ${categoryOptions}
+                                    </select>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Portionen</label>
+                                            <input type="number" class="form-control" id="servings" value="${recipe.portions}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Vorbereitungszeit (Min)</label>
+                                            <input type="number" class="form-control" id="prepTime" value="${recipe.prep_time}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Kochzeit (Min)</label>
+                                            <input type="number" class="form-control" id="cookTime" value="${recipe.cook_time}">
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label class="form-label">Zubereitungszeit (Min)</label>
-                                        <input type="number" class="form-control" id="cookingTime" value="30">
+                                <div class="mb-3">
+                                    <label class="form-label">Kosten pro Portion</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">€</span>
+                                        <input type="text" class="form-control" value="${recipe.cost_per_portion ? recipe.cost_per_portion.toFixed(2) : '0.00'}" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="calculateRecipeCost(${recipeId})">
+                                            <i class="bi bi-calculator"></i> Neu berechnen
+                                        </button>
                                     </div>
                                 </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Zutaten (basierend auf Lieferantenartikeln)</label>
+                                    <div class="alert alert-info small">
+                                        <i class="bi bi-info-circle"></i> Die Zutaten basieren auf konkreten Lieferantenartikeln mit Nährwerten und Allergenen.
+                                    </div>
+                                    <textarea class="form-control" id="ingredients" rows="6" readonly>${ingredientsText}</textarea>
+                                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="openIngredientEditor(${recipeId})">
+                                        <i class="bi bi-pencil"></i> Zutaten bearbeiten
+                                    </button>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Zubereitung</label>
+                                    <textarea class="form-control" id="instructions" rows="4">${recipe.instructions || ''}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Notizen</label>
+                                    <textarea class="form-control" id="notes" rows="2">${recipe.notes || ''}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Tags</label>
+                                    <input type="text" class="form-control" id="tags" value="${recipe.tags || ''}" placeholder="z.B. vegan, glutenfrei, schnell">
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Zutaten</label>
-                                <textarea class="form-control" id="ingredients" rows="4">200g Hackfleisch
-150g Zwiebeln
-2 Tomaten
-Salt, Pfeffer nach Geschmack</textarea>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                                <button type="button" class="btn btn-primary" onclick="saveRecipeChanges(${recipeId})">Speichern</button>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Zubereitung</label>
-                                <textarea class="form-control" id="instructions" rows="4">1. Zwiebeln schneiden und anbraten
-2. Hackfleisch hinzufügen und anbraten
-3. Tomaten hinzufügen und würzen
-4. 20 Minuten köcheln lassen</textarea>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                            <button type="button" class="btn btn-primary" data-action="saveRecipeChanges" data-param="${recipeId}">Speichern</button>
                         </div>
                     </div>
-                </div>
-            `;
-            document.body.appendChild(editModal);
-            const modal = new bootstrap.Modal(editModal);
-            modal.show();
+                `;
+                document.body.appendChild(editModal);
+                const modal = new bootstrap.Modal(editModal);
+                modal.show();
+                
+                // Cleanup on close
+                editModal.addEventListener('hidden.bs.modal', () => {
+                    document.body.removeChild(editModal);
+                });
+                
+            } catch (error) {
+                console.error('Error loading recipe:', error);
+                showToast('❌ Fehler beim Laden des Rezepts', 'error');
+            }
         }
 
-        function saveRecipeChanges(recipeId) {
-            const name = document.getElementById('recipeName').value;
-            const category = document.getElementById('recipeCategory').value;
-            const servings = document.getElementById('servings').value;
-            const cookingTime = document.getElementById('cookingTime').value;
-            
-            showToast(`✅ Rezept "${name}" erfolgreich aktualisiert!`, 'success');
-            
-            const modal = bootstrap.Modal.getInstance(document.querySelector('.modal.show'));
-            modal.hide();
+        async function saveRecipeChanges(recipeId) {
+            try {
+                const recipeData = {
+                    name: document.getElementById('recipeName').value,
+                    category_id: parseInt(document.getElementById('recipeCategory').value),
+                    portions: parseInt(document.getElementById('servings').value),
+                    prep_time: parseInt(document.getElementById('prepTime').value),
+                    cook_time: parseInt(document.getElementById('cookTime').value),
+                    instructions: document.getElementById('instructions').value,
+                    notes: document.getElementById('notes').value,
+                    tags: document.getElementById('tags').value
+                };
+                
+                await api.put(`/recipes/${recipeId}`, recipeData);
+                
+                showToast(`✅ Rezept "${recipeData.name}" erfolgreich aktualisiert!`, 'success');
+                
+                const modal = bootstrap.Modal.getInstance(document.querySelector('.modal.show'));
+                modal.hide();
+                
+                // Aktualisiere die Rezeptliste
+                if (typeof loadRecipes === 'function') {
+                    loadRecipes();
+                }
+            } catch (error) {
+                console.error('Error saving recipe:', error);
+                showToast('❌ Fehler beim Speichern des Rezepts', 'error');
+            }
+        }
+
+        async function calculateRecipeCost(recipeId) {
+            try {
+                const costData = await api.get(`/recipes/${recipeId}/cost`);
+                if (costData.success && costData.data) {
+                    const cost = costData.data.cost_per_portion;
+                    showToast(`💰 Kosten neu berechnet: €${cost.toFixed(2)} pro Portion`, 'success');
+                    
+                    // Update cost display if exists
+                    const costInput = document.querySelector('input[value*="' + recipeId + '"]');
+                    if (costInput) {
+                        costInput.value = cost.toFixed(2);
+                    }
+                }
+            } catch (error) {
+                console.error('Error calculating cost:', error);
+                showToast('❌ Fehler bei der Kostenberechnung', 'error');
+            }
+        }
+        
+        function openIngredientEditor(recipeId) {
+            showToast('🚧 Zutaten-Editor wird in der nächsten Version verfügbar sein', 'info');
+            // TODO: Implement ingredient editor with article selection
         }
 
         function copyRecipe(recipeId) {

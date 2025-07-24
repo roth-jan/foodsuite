@@ -637,6 +637,49 @@ router.get('/articles/all', async (req, res) => {
     }
 });
 
+// PUT /api/recipes/:id - Update recipe
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const validation = legacyRecipeSchema.validate(req.body);
+        
+        if (validation.error) {
+            return res.status(400).json({ 
+                error: 'Validation error', 
+                details: validation.error.details 
+            });
+        }
+        
+        const value = validation.value;
+        
+        // Check if recipe exists
+        const existingRecipe = await db.findById('recipes', id, req.tenantId);
+        if (!existingRecipe) {
+            return res.status(404).json({ error: 'Recipe not found' });
+        }
+        
+        // Update recipe
+        const updateData = {
+            name: value.name,
+            category_id: value.category_id,
+            portions: value.portions,
+            prep_time: value.prep_time,
+            cook_time: value.cook_time,
+            instructions: value.instructions,
+            notes: value.notes || '',
+            tags: value.tags || '',
+            updated_at: new Date().toISOString()
+        };
+        
+        const updatedRecipe = await db.update('recipes', id, updateData, req.tenantId);
+        
+        res.json(updatedRecipe);
+    } catch (error) {
+        console.error('Error updating recipe:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // POST /api/recipes/validate-ingredients - Validate ingredients before recipe creation
 router.post('/validate-ingredients', async (req, res) => {
     try {
