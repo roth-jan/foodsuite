@@ -742,6 +742,81 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// PUT /api/recipes/:id/ingredients - Update recipe ingredients
+router.put('/:id/ingredients', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { ingredients } = req.body;
+        
+        if (!Array.isArray(ingredients)) {
+            return res.status(400).json({ 
+                error: 'Ingredients must be an array' 
+            });
+        }
+        
+        // Validate each ingredient
+        for (const ingredient of ingredients) {
+            const validation = newRecipeIngredientSchema.validate(ingredient);
+            if (validation.error) {
+                return res.status(400).json({ 
+                    error: 'Invalid ingredient data', 
+                    details: validation.error.details 
+                });
+            }
+        }
+        
+        // Check if recipe exists
+        const recipe = await db.findById('recipes', id, req.tenantId);
+        if (!recipe) {
+            return res.status(404).json({ error: 'Recipe not found' });
+        }
+        
+        // Delete existing ingredients and add new ones
+        await db.transaction(async (database) => {
+            // Remove old ingredients
+            if (db.data.recipe_ingredients_new) {
+                db.data.recipe_ingredients_new = db.data.recipe_ingredients_new.filter(
+                    ing => ing.recipe_id !== parseInt(id)
+                );
+            }
+            
+            // Add new ingredients
+            let sortOrder = 1;
+            for (const ingredient of ingredients) {
+                const newIngredient = {
+                    id: Date.now() + sortOrder, // Simple ID generation
+                    recipe_id: parseInt(id),
+                    supplier_article_id: ingredient.supplier_article_id || null,
+                    neutral_article_id: ingredient.neutral_article_id || null,
+                    quantity: ingredient.quantity,
+                    unit: ingredient.unit,
+                    preparation_note: ingredient.preparation_note || '',
+                    optional: ingredient.optional || false,
+                    substitution_factor: 1.0,
+                    sort_order: sortOrder++
+                };
+                
+                if (!db.data.recipe_ingredients_new) {
+                    db.data.recipe_ingredients_new = [];
+                }
+                db.data.recipe_ingredients_new.push(newIngredient);
+            }
+        });
+        
+        // Return success message
+        res.json({
+            success: true,
+            message: 'Ingredients updated successfully',
+            recipeId: parseInt(id),
+            ingredientCount: ingredients.length
+        });
+        
+    } catch (error) {
+        console.error('Error updating recipe ingredients:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // POST /api/recipes/validate-ingredients - Validate ingredients before recipe creation
 router.post('/validate-ingredients', async (req, res) => {
     try {

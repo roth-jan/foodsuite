@@ -8221,9 +8221,256 @@
             }
         }
         
-        function openIngredientEditor(recipeId) {
-            showToast('🚧 Zutaten-Editor wird in der nächsten Version verfügbar sein', 'info');
-            // TODO: Implement ingredient editor with article selection
+        async function openIngredientEditor(recipeId) {
+            try {
+                // Lade verfügbare Artikel
+                const articlesData = await api.get('/recipes/articles/all');
+                const supplierArticles = articlesData.data.supplier_articles || [];
+                const neutralArticles = articlesData.data.neutral_articles || [];
+                
+                // Lade aktuelle Zutaten
+                const ingredientsData = await api.get(`/recipes/${recipeId}/ingredients`);
+                const currentIngredients = ingredientsData.data.ingredients || [];
+                
+                const modal = document.createElement('div');
+                modal.className = 'modal fade';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Zutaten bearbeiten</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> Wählen Sie Lieferantenartikel (bevorzugt) oder neutrale Artikel als Fallback.
+                                </div>
+                                
+                                <div id="ingredientsList">
+                                    ${currentIngredients.map((ing, index) => `
+                                        <div class="ingredient-row border rounded p-3 mb-2" data-index="${index}">
+                                            <div class="row">
+                                                <div class="col-md-5">
+                                                    <label class="form-label">Artikel</label>
+                                                    <select class="form-select article-select" data-current-supplier="${ing.article.id || ''}" data-current-type="${ing.article.type}">
+                                                        <option value="">-- Artikel wählen --</option>
+                                                        <optgroup label="Lieferantenartikel (bevorzugt)">
+                                                            ${supplierArticles.map(article => 
+                                                                `<option value="supplier-${article.id}" 
+                                                                    ${ing.article.type === 'supplier_article' && ing.article.id === article.id ? 'selected' : ''}>
+                                                                    ${article.name} (${article.article_number}) - €${article.price}/${article.unit}
+                                                                </option>`
+                                                            ).join('')}
+                                                        </optgroup>
+                                                        <optgroup label="Neutrale Artikel (Fallback)">
+                                                            ${neutralArticles.map(article => 
+                                                                `<option value="neutral-${article.id}"
+                                                                    ${ing.article.type === 'neutral_article' && ing.article.id === article.id ? 'selected' : ''}>
+                                                                    ${article.name} - ca. €${article.estimated_price_range.min}-${article.estimated_price_range.max}/${article.base_unit}
+                                                                </option>`
+                                                            ).join('')}
+                                                        </optgroup>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Menge</label>
+                                                    <input type="number" class="form-control quantity-input" value="${ing.quantity}" step="0.1" min="0">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Einheit</label>
+                                                    <input type="text" class="form-control unit-input" value="${ing.unit}">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Zubereitung</label>
+                                                    <input type="text" class="form-control prep-input" value="${ing.preparation_note || ''}" placeholder="z.B. gewürfelt">
+                                                </div>
+                                                <div class="col-md-1 d-flex align-items-end">
+                                                    <button class="btn btn-danger btn-sm" onclick="removeIngredient(${index})">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-12">
+                                                    <small class="text-muted article-info">
+                                                        ${ing.article.type === 'supplier_article' ? 
+                                                            `Lieferant: ${ing.price_info.supplier_name} | Nährwerte verfügbar` : 
+                                                            'Neutraler Artikel - geschätzte Preise'}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                
+                                <button class="btn btn-success mt-3" onclick="addNewIngredient()">
+                                    <i class="bi bi-plus-circle"></i> Zutat hinzufügen
+                                </button>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                                <button type="button" class="btn btn-primary" onclick="saveIngredients(${recipeId})">
+                                    <i class="bi bi-save"></i> Zutaten speichern
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                window.ingredientEditorModal = new bootstrap.Modal(modal);
+                window.ingredientEditorModal.show();
+                
+                // Store data for later use
+                window.availableSupplierArticles = supplierArticles;
+                window.availableNeutralArticles = neutralArticles;
+                
+                modal.addEventListener('hidden.bs.modal', () => {
+                    document.body.removeChild(modal);
+                    delete window.ingredientEditorModal;
+                    delete window.availableSupplierArticles;
+                    delete window.availableNeutralArticles;
+                });
+                
+            } catch (error) {
+                console.error('Error opening ingredient editor:', error);
+                showToast('❌ Fehler beim Laden des Zutaten-Editors', 'error');
+            }
+        }
+
+        function removeIngredient(index) {
+            const row = document.querySelector(`.ingredient-row[data-index="${index}"]`);
+            if (row) {
+                row.remove();
+            }
+        }
+        
+        function addNewIngredient() {
+            const ingredientsList = document.getElementById('ingredientsList');
+            const newIndex = Date.now(); // Unique index
+            
+            const newRow = document.createElement('div');
+            newRow.className = 'ingredient-row border rounded p-3 mb-2';
+            newRow.setAttribute('data-index', newIndex);
+            newRow.innerHTML = `
+                <div class="row">
+                    <div class="col-md-5">
+                        <label class="form-label">Artikel</label>
+                        <select class="form-select article-select">
+                            <option value="">-- Artikel wählen --</option>
+                            <optgroup label="Lieferantenartikel (bevorzugt)">
+                                ${window.availableSupplierArticles.map(article => 
+                                    `<option value="supplier-${article.id}">
+                                        ${article.name} (${article.article_number}) - €${article.price}/${article.unit}
+                                    </option>`
+                                ).join('')}
+                            </optgroup>
+                            <optgroup label="Neutrale Artikel (Fallback)">
+                                ${window.availableNeutralArticles.map(article => 
+                                    `<option value="neutral-${article.id}">
+                                        ${article.name} - ca. €${article.estimated_price_range.min}-${article.estimated_price_range.max}/${article.base_unit}
+                                    </option>`
+                                ).join('')}
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Menge</label>
+                        <input type="number" class="form-control quantity-input" value="1" step="0.1" min="0">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Einheit</label>
+                        <input type="text" class="form-control unit-input" value="kg">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Zubereitung</label>
+                        <input type="text" class="form-control prep-input" placeholder="z.B. gewürfelt">
+                    </div>
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button class="btn btn-danger btn-sm" onclick="removeIngredient(${newIndex})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <small class="text-muted article-info">
+                            Bitte Artikel auswählen
+                        </small>
+                    </div>
+                </div>
+            `;
+            
+            ingredientsList.appendChild(newRow);
+        }
+        
+        async function saveIngredients(recipeId) {
+            try {
+                const ingredientRows = document.querySelectorAll('.ingredient-row');
+                const ingredients = [];
+                
+                ingredientRows.forEach(row => {
+                    const articleSelect = row.querySelector('.article-select');
+                    const quantity = row.querySelector('.quantity-input').value;
+                    const unit = row.querySelector('.unit-input').value;
+                    const preparation = row.querySelector('.prep-input').value;
+                    
+                    if (articleSelect.value) {
+                        const [type, id] = articleSelect.value.split('-');
+                        const ingredient = {
+                            quantity: parseFloat(quantity),
+                            unit: unit,
+                            preparation_note: preparation,
+                            optional: false
+                        };
+                        
+                        if (type === 'supplier') {
+                            ingredient.supplier_article_id = parseInt(id);
+                        } else if (type === 'neutral') {
+                            ingredient.neutral_article_id = parseInt(id);
+                        }
+                        
+                        ingredients.push(ingredient);
+                    }
+                });
+                
+                if (ingredients.length === 0) {
+                    showToast('⚠️ Bitte mindestens eine Zutat hinzufügen', 'warning');
+                    return;
+                }
+                
+                // Update recipe with new ingredients
+                const response = await api.put(`/recipes/${recipeId}/ingredients`, { ingredients });
+                
+                if (response.success) {
+                    showToast(`✅ ${response.ingredientCount} Zutaten erfolgreich gespeichert!`, 'success');
+                    
+                    // Reload the recipe edit modal to show updated ingredients
+                    window.ingredientEditorModal.hide();
+                    
+                    // If we're in the recipe edit modal, update the ingredients display
+                    const ingredientsTextarea = document.getElementById('ingredients');
+                    if (ingredientsTextarea) {
+                        // Reload ingredient data
+                        const updatedIngredientsData = await api.get(`/recipes/${recipeId}/ingredients`);
+                        const updatedIngredients = updatedIngredientsData.data.ingredients || [];
+                        
+                        const ingredientsText = updatedIngredients.map(ing => {
+                            const articleName = ing.article ? ing.article.name : 'Unbekannt';
+                            const preparation = ing.preparation_note ? ` - ${ing.preparation_note}` : '';
+                            return `${ing.quantity}${ing.unit} ${articleName}${preparation}`;
+                        }).join('\n');
+                        
+                        ingredientsTextarea.value = ingredientsText;
+                    }
+                } else {
+                    showToast('❌ Fehler beim Speichern der Zutaten', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error saving ingredients:', error);
+                showToast('❌ Fehler beim Speichern der Zutaten', 'error');
+            }
         }
 
         function copyRecipe(recipeId) {
