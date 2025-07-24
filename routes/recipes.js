@@ -221,22 +221,84 @@ router.get('/:id', async (req, res) => {
             recipe.category = recipeCategories.find(cat => cat.id === recipe.category_id);
         }
         
-        // Get ingredients from in-memory database
-        const recipeIngredients = db.data.recipe_ingredients || [];
-        const products = db.data.products || [];
+        // Get ingredients from NEW article system
+        let ingredients = [];
         
-        const ingredients = recipeIngredients
-            .filter(ri => ri.recipe_id === parseInt(id))
-            .map(ri => {
-                const product = products.find(p => p.id === ri.product_id);
-                return {
-                    ...ri,
-                    product_name: product ? product.name : 'Unknown Product',
-                    price: product ? product.price : 0,
-                    product_unit: product ? product.unit : 'kg',
-                    article_number: product ? product.article_number : ''
-                };
-            });
+        // Check if new article system is available
+        if (db.data && db.data.recipe_ingredients_new) {
+            const newIngredients = db.data.recipe_ingredients_new
+                .filter(ri => ri.recipe_id === parseInt(id));
+            
+            if (newIngredients.length > 0) {
+                // Use new article system
+                ingredients = newIngredients.map(ing => {
+                    let articleData = null;
+                    let articleName = 'Unbekannt';
+                    let price = 0;
+                    let unit = ing.unit;
+                    let articleNumber = '';
+                    
+                    // Try supplier article first
+                    if (ing.supplier_article_id) {
+                        const supplierArticle = db.data.supplier_articles?.find(a => 
+                            a.id === ing.supplier_article_id
+                        );
+                        if (supplierArticle) {
+                            articleData = supplierArticle;
+                            articleName = supplierArticle.name;
+                            price = supplierArticle.price;
+                            unit = supplierArticle.unit;
+                            articleNumber = supplierArticle.article_number;
+                        }
+                    }
+                    
+                    // Fallback to neutral article
+                    if (!articleData && ing.neutral_article_id) {
+                        const neutralArticle = db.data.neutral_articles?.find(n => 
+                            n.id === ing.neutral_article_id
+                        );
+                        if (neutralArticle) {
+                            articleData = neutralArticle;
+                            articleName = neutralArticle.name;
+                            price = neutralArticle.estimated_price_range?.min || 0;
+                            unit = neutralArticle.base_unit;
+                        }
+                    }
+                    
+                    return {
+                        id: ing.id,
+                        recipe_id: ing.recipe_id,
+                        quantity: ing.quantity,
+                        unit: ing.unit,
+                        product_name: articleName,
+                        price: price,
+                        product_unit: unit,
+                        article_number: articleNumber,
+                        preparation_note: ing.preparation_note || '',
+                        notes: ing.preparation_note || articleName
+                    };
+                });
+            }
+        }
+        
+        // Fallback to legacy ingredients if no new system data
+        if (ingredients.length === 0) {
+            const recipeIngredients = db.data.recipe_ingredients || [];
+            const products = db.data.products || [];
+            
+            ingredients = recipeIngredients
+                .filter(ri => ri.recipe_id === parseInt(id))
+                .map(ri => {
+                    const product = products.find(p => p.id === ri.product_id);
+                    return {
+                        ...ri,
+                        product_name: product ? product.name : 'Unknown Product',
+                        price: product ? product.price : 0,
+                        product_unit: product ? product.unit : 'kg',
+                        article_number: product ? product.article_number : ''
+                    };
+                });
+        }
         
         recipe.ingredients = ingredients;
         
