@@ -1,6 +1,7 @@
 // In-Memory Database for FoodSuite with extensive canteen test data
 const canteenTestData = require('./canteen-test-data');
 const supplierArticlesData = require('./supplier-articles-data');
+const migrateRecipesToNewSystem = require('./migrate-recipes');
 const { ArticleSystem } = require('./article-system');
 const userManagement = require('./user-management');
 const { authSchema, systemRoles, systemPermissions, defaultRolePermissions } = require('./auth-schema');
@@ -127,6 +128,10 @@ class InMemoryDatabase {
         this.data.neutral_articles = supplierArticlesData.neutralArticles;
         this.data.supplier_articles = supplierArticlesData.supplierArticles;
         this.data.recipe_ingredients_new = supplierArticlesData.recipeIngredients;
+        
+        // Apply recipe migration to extend data for existing recipes
+        const migrationResult = migrateRecipesToNewSystem.applyMigration(this);
+        console.log(`📦 Migration applied: +${migrationResult.neutralArticles} neutral, +${migrationResult.supplierArticles} supplier articles`);
         
         // Fix recipe costs for AI mode differentiation
         this.fixRecipeCosts();
