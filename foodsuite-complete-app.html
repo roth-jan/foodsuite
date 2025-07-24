@@ -8122,7 +8122,7 @@
                                     <div class="input-group">
                                         <span class="input-group-text">€</span>
                                         <input type="text" class="form-control" value="${recipe.cost_per_portion ? recipe.cost_per_portion.toFixed(2) : '0.00'}" readonly>
-                                        <button class="btn btn-outline-secondary" type="button" onclick="calculateRecipeCost(${recipeId})">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="window.calculateRecipeCost(${recipeId})">
                                             <i class="bi bi-calculator"></i> Neu berechnen
                                         </button>
                                     </div>
@@ -8133,7 +8133,7 @@
                                         <i class="bi bi-info-circle"></i> Die Zutaten basieren auf konkreten Lieferantenartikeln mit Nährwerten und Allergenen.
                                     </div>
                                     <textarea class="form-control" id="ingredients" rows="6" readonly>${ingredientsText}</textarea>
-                                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="openIngredientEditor(${recipeId})">
+                                    <button class="btn btn-sm btn-outline-primary mt-2" onclick="window.openIngredientEditor(${recipeId})">
                                         <i class="bi bi-pencil"></i> Zutaten bearbeiten
                                     </button>
                                 </div>
@@ -8152,7 +8152,7 @@
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                                <button type="button" class="btn btn-primary" onclick="saveRecipeChanges(${recipeId})">Speichern</button>
+                                <button type="button" class="btn btn-primary" onclick="window.saveRecipeChanges(${recipeId})">Speichern</button>
                             </div>
                         </div>
                     </div>
@@ -8285,7 +8285,7 @@
                                                     <input type="text" class="form-control prep-input" value="${ing.preparation_note || ''}" placeholder="z.B. gewürfelt">
                                                 </div>
                                                 <div class="col-md-1 d-flex align-items-end">
-                                                    <button class="btn btn-danger btn-sm" onclick="removeIngredient(${index})">
+                                                    <button class="btn btn-danger btn-sm" onclick="window.removeIngredient(${index})">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </div>
@@ -8303,13 +8303,13 @@
                                     `).join('')}
                                 </div>
                                 
-                                <button class="btn btn-success mt-3" onclick="addNewIngredient()">
+                                <button class="btn btn-success mt-3" onclick="window.addNewIngredient()">
                                     <i class="bi bi-plus-circle"></i> Zutat hinzufügen
                                 </button>
                             </div>
                             <div class="modal-footer">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                                <button type="button" class="btn btn-primary" onclick="saveIngredients(${recipeId})">
+                                <button type="button" class="btn btn-primary" onclick="window.saveIngredients(${recipeId})">
                                     <i class="bi bi-save"></i> Zutaten speichern
                                 </button>
                             </div>
@@ -8387,7 +8387,7 @@
                         <input type="text" class="form-control prep-input" placeholder="z.B. gewürfelt">
                     </div>
                     <div class="col-md-1 d-flex align-items-end">
-                        <button class="btn btn-danger btn-sm" onclick="removeIngredient(${newIndex})">
+                        <button class="btn btn-danger btn-sm" onclick="window.removeIngredient(${newIndex})">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -8535,7 +8535,7 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                            <button type="button" class="btn btn-primary" onclick="createNewRecipe()">
+                            <button type="button" class="btn btn-primary" onclick="window.createNewRecipe()">
                                 <i class="bi bi-plus-circle"></i> Rezept erstellen
                             </button>
                         </div>
@@ -10734,7 +10734,11 @@
                     try {
                         switch (action) {
                             case 'showModal':
-                                if (modal && typeof showModal === 'function') showModal(modal);
+                                if (param && typeof window.showModal === 'function') {
+                                    window.showModal(param);
+                                } else if (modal && typeof window.showModal === 'function') {
+                                    window.showModal(modal);
+                                }
                                 break;
                             case 'applyAIRecommendation':
                                 if (param && typeof applyAIRecommendation === 'function') applyAIRecommendation(parseInt(param));
