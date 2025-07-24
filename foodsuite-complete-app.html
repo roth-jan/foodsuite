@@ -5875,10 +5875,12 @@
             try {
                 // Build request body
                 const requestBody = {
-                    mode: customConfig ? 'custom' : currentMode,
+                    mode: customConfig ? 'custom' : mappedMode,  // Use mappedMode not currentMode!
                     weekNumber: AppData.currentWeek || 1,
-                    currentPlan: AppData.mealPlan
+                    currentPlan: AppData.mealPlan || {}
                 };
+                
+                console.log('📤 Sending AI request:', JSON.stringify(requestBody));
                 
                 // Add custom config if available
                 if (customConfig) {
@@ -5895,7 +5897,11 @@
                     body: JSON.stringify(requestBody)
                 });
                 
-                if (!response.ok) throw new Error('AI suggestion failed');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('AI API Error:', response.status, errorText);
+                    throw new Error(`AI suggestion failed: ${response.status} - ${errorText}`);
+                }
                 
                 const aiPlan = await response.json();
                 
