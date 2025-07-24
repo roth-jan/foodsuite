@@ -8473,6 +8473,163 @@
             }
         }
 
+        // Create new recipe modal
+        function showCreateRecipeModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Neues Rezept erstellen</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="newRecipeForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Rezeptname</label>
+                                    <input type="text" class="form-control" id="newRecipeName" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Kategorie</label>
+                                    <select class="form-select" id="newRecipeCategory" required>
+                                        <option value="">-- Kategorie wählen --</option>
+                                    </select>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Portionen</label>
+                                            <input type="number" class="form-control" id="newRecipePortions" value="50" min="1" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Vorbereitungszeit (Min)</label>
+                                            <input type="number" class="form-control" id="newRecipePrepTime" value="30" min="0" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label class="form-label">Kochzeit (Min)</label>
+                                            <input type="number" class="form-control" id="newRecipeCookTime" value="45" min="0" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Zubereitung</label>
+                                    <textarea class="form-control" id="newRecipeInstructions" rows="4" required placeholder="Beschreiben Sie die Zubereitungsschritte..."></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Notizen</label>
+                                    <textarea class="form-control" id="newRecipeNotes" rows="2" placeholder="Optionale Notizen..."></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Tags</label>
+                                    <input type="text" class="form-control" id="newRecipeTags" placeholder="z.B. vegan, glutenfrei, schnell">
+                                </div>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i> Nach dem Erstellen können Sie im nächsten Schritt die Zutaten hinzufügen.
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                            <button type="button" class="btn btn-primary" onclick="createNewRecipe()">
+                                <i class="bi bi-plus-circle"></i> Rezept erstellen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            
+            // Load categories
+            loadRecipeCategories();
+            
+            modal.addEventListener('hidden.bs.modal', () => {
+                document.body.removeChild(modal);
+            });
+        }
+        
+        async function loadRecipeCategories() {
+            try {
+                const categories = await api.get('/recipes/categories/all');
+                const select = document.getElementById('newRecipeCategory');
+                if (select) {
+                    select.innerHTML = '<option value="">-- Kategorie wählen --</option>' +
+                        categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('');
+                }
+            } catch (error) {
+                console.error('Error loading categories:', error);
+            }
+        }
+        
+        async function createNewRecipe() {
+            try {
+                const form = document.getElementById('newRecipeForm');
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                
+                const recipeData = {
+                    name: document.getElementById('newRecipeName').value,
+                    category_id: parseInt(document.getElementById('newRecipeCategory').value),
+                    portions: parseInt(document.getElementById('newRecipePortions').value),
+                    prep_time: parseInt(document.getElementById('newRecipePrepTime').value),
+                    cook_time: parseInt(document.getElementById('newRecipeCookTime').value),
+                    instructions: document.getElementById('newRecipeInstructions').value,
+                    notes: document.getElementById('newRecipeNotes').value,
+                    tags: document.getElementById('newRecipeTags').value,
+                    ingredients: [] // Start with empty ingredients
+                };
+                
+                const response = await api.post('/recipes', recipeData);
+                
+                if (response.id) {
+                    showToast(`✅ Rezept "${recipeData.name}" erfolgreich erstellt!`, 'success');
+                    
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.querySelector('.modal.show'));
+                    modal.hide();
+                    
+                    // Open ingredient editor for the new recipe
+                    setTimeout(() => {
+                        openIngredientEditor(response.id);
+                    }, 500);
+                    
+                    // Reload recipes
+                    if (typeof loadRecipes === 'function') {
+                        loadRecipes();
+                    }
+                } else {
+                    showToast('❌ Fehler beim Erstellen des Rezepts', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error creating recipe:', error);
+                showToast('❌ Fehler beim Erstellen des Rezepts', 'error');
+            }
+        }
+        
+        // Show modal helper function
+        function showModal(modalId) {
+            if (modalId === 'createRecipeModal') {
+                showCreateRecipeModal();
+            } else {
+                // Handle other modals
+                const modalElement = document.getElementById(modalId);
+                if (modalElement) {
+                    const modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                }
+            }
+        }
+
         function copyRecipe(recipeId) {
             const copyModal = document.createElement('div');
             copyModal.className = 'modal fade';
