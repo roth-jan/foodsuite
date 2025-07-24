@@ -5816,7 +5816,7 @@
             }
         }
         
-        async function generateAIWeekMenu() {
+        window.generateAIWeekMenu = async function() {
             const modeNames = {
                 'cost_optimized': 'Kostenoptimierung',
                 'balanced_nutrition': 'Ausgewogene Ernährung',
@@ -10762,7 +10762,7 @@
                                 if (message && type && typeof showToast === 'function') showToast(message, type);
                                 break;
                             case 'generateAIWeekMenu':
-                                if (typeof generateAIWeekMenu === 'function') generateAIWeekMenu();
+                                if (typeof window.generateAIWeekMenu === 'function') window.generateAIWeekMenu();
                                 else showToast('KI Wochenmenü wird generiert...', 'info');
                                 break;
                             case 'optimizeCurrentPlan':
@@ -12495,7 +12495,7 @@
             }
         }
 
-        async function generateAIWeekMenuWithCustom(customConfig) {
+        window.generateAIWeekMenuWithCustom = async function(customConfig) {
             try {
                 const response = await fetch(`${API_BASE_URL}/ai/suggest-meals`, {
                     method: 'POST',
