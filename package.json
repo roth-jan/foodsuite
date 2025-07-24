@@ -26,6 +26,7 @@
   "dependencies": {
     "@aws-sdk/client-rds": "^3.848.0",
     "@aws-sdk/client-s3": "^3.850.0",
+    "@playwright/mcp": "^0.0.31",
     "@playwright/test": "^1.54.1",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
@@ -40,6 +41,7 @@
     "morgan": "^1.10.0",
     "node-fetch": "^2.7.0",
     "pg": "^8.16.3",
+    "playwright": "^1.54.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

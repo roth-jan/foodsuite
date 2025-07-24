@@ -62,8 +62,13 @@ router.get('/', async (req, res) => {
     try {
         const { page = 1, limit = 10, search, category, supplier, status } = req.query;
         
+        // Check if using memory database
+        console.log(`DB has getProducts method: ${!!db.getProducts}`);
+        console.log(`DB has data property: ${!!db.data}`);
+        
         // Use adapter method if available
         if (db.getProducts) {
+            console.log('Using db.getProducts method');
             const filters = {
                 search,
                 category,
@@ -88,52 +93,76 @@ router.get('/', async (req, res) => {
             return;
         }
         
-        // Fallback to SQL for in-memory DB
-        let options = {};
-        let whereConditions = [];
-        let params = [];
-        
-        // Build where conditions
-        if (search) {
-            whereConditions.push('(name LIKE ? OR article_number LIKE ?)');
-            params.push(`%${search}%`, `%${search}%`);
-        }
-        
-        if (category) {
-            whereConditions.push('category_id = ?');
-            params.push(category);
-        }
-        
-        if (supplier) {
-            whereConditions.push('supplier_id = ?');
-            params.push(supplier);
-        }
-        
-        if (status) {
-            whereConditions.push('status = ?');
-            params.push(status);
-        }
-        
-        if (whereConditions.length > 0) {
-            options.where = whereConditions.join(' AND ');
-            options.params = params;
-        }
-        
-        options.orderBy = 'name ASC';
-        
-        const result = await db.paginate('products', parseInt(page), parseInt(limit), req.tenantId, options);
-        
-        // Enrich with category and supplier info
-        for (let product of result.items) {
-            if (product.category_id) {
-                product.category = await db.get('SELECT * FROM product_categories WHERE id = ?', [product.category_id]);
+        // Handle in-memory database
+        if (db.data && db.data.products) {
+            let products = db.data.products.filter(p => p.tenant_id === req.tenantId);
+            
+            // Apply filters
+            if (search) {
+                const searchLower = search.toLowerCase();
+                products = products.filter(p => 
+                    p.name.toLowerCase().includes(searchLower) ||
+                    (p.article_number && p.article_number.toLowerCase().includes(searchLower))
+                );
             }
-            if (product.supplier_id) {
-                product.supplier = await db.get('SELECT * FROM suppliers WHERE id = ?', [product.supplier_id]);
+            
+            if (category) {
+                products = products.filter(p => p.category === category || p.category_id === parseInt(category));
             }
+            
+            if (supplier) {
+                products = products.filter(p => p.supplier_id === parseInt(supplier));
+            }
+            
+            if (status) {
+                products = products.filter(p => p.status === status);
+            }
+            
+            // Sort by name
+            products.sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Paginate
+            const totalItems = products.length;
+            const totalPages = Math.ceil(totalItems / limit);
+            const offset = (page - 1) * limit;
+            const paginatedProducts = products.slice(offset, offset + parseInt(limit));
+            
+            // Enrich with supplier info
+            paginatedProducts.forEach(product => {
+                if (product.supplier_id) {
+                    const supplier = db.data.suppliers.find(s => s.id === product.supplier_id);
+                    if (supplier) {
+                        product.supplier = {
+                            id: supplier.id,
+                            name: supplier.name,
+                            contact_person: supplier.contact_person,
+                            email: supplier.email
+                        };
+                    }
+                }
+            });
+            
+            res.json({
+                items: paginatedProducts,
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalItems,
+                    totalPages
+                }
+            });
+        } else {
+            // If memory database is not initialized
+            res.json({
+                items: [],
+                pagination: {
+                    page: parseInt(page),
+                    limit: parseInt(limit),
+                    totalItems: 0,
+                    totalPages: 0
+                }
+            });
         }
-        
-        res.json(result);
     } catch (error) {
         console.error('Error fetching products:', error);
         res.status(500).json({ error: 'Internal server error' });

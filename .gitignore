@@ -19,3 +19,8 @@ ReneTimo/
 venv/
 *.tar.gz
 *.zip
+foodsuite-deploy/
+# Large files to avoid GitHub size limits
+chrome/
+*.tar.gz
+venv/

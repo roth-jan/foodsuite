@@ -70,7 +70,8 @@ function updateRealisticInventory() {
                 max_stock: categoryData.max_stock,
                 consumption_rate_per_day: categoryData.consumption_rate,
                 is_perishable: categoryData.perishable || false,
-                last_updated: new Date().toISOString()
+                last_updated: new Date().toISOString(),
+                tenant_id: product.tenant_id || 'demo'
             };
             
             updated++;

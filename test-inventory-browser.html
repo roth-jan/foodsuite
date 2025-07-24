@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Lagerverwaltung Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Lagerverwaltung Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: API Endpoints</h2>
+        <button onclick="testAPIs()">API Tests starten</button>
+        <div id="api-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Tab-Funktionalität</h2>
+        <p>Dieser Test öffnet FoodSuite in einem neuen Fenster und testet die Tabs.</p>
+        <button onclick="openFoodSuite()">FoodSuite öffnen</button>
+        <button onclick="testTabs()">Tab-Test starten</button>
+        <div id="tab-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Daten in Tabs</h2>
+        <button onclick="checkTabData()">Daten prüfen</button>
+        <div id="data-results"></div>
+    </div>
+
+    <script>
+        let testWindow = null;
+        
+        async function testAPIs() {
+            const results = document.getElementById('api-results');
+            results.innerHTML = '<p class="info">Teste APIs...</p>';
+            
+            try {
+                // Test inventory endpoint
+                const invResponse = await fetch('http://localhost:3003/api/inventory?limit=5', {
+                    headers: { 'x-tenant-id': 'demo' }
+                });
+                const invData = await invResponse.json();
+                
+                results.innerHTML += `<p class="success">✅ Inventory API: ${invData.items?.length || 0} items</p>`;
+                
+                // Test orders endpoint
+                const ordResponse = await fetch('http://localhost:3003/api/orders?status=ordered&limit=5', {
+                    headers: { 'x-tenant-id': 'demo' }
+                });
+                const ordData = await ordResponse.json();
+                
+                results.innerHTML += `<p class="success">✅ Orders API: ${ordData.items?.length || 0} orders</p>`;
+                
+                // Show sample data
+                if (invData.items && invData.items.length > 0) {
+                    results.innerHTML += '<h4>Beispiel Inventory Daten:</h4>';
+                    results.innerHTML += '<pre>' + JSON.stringify(invData.items[0], null, 2) + '</pre>';
+                }
+                
+            } catch (error) {
+                results.innerHTML += `<p class="error">❌ Fehler: ${error.message}</p>`;
+            }
+        }
+        
+        function openFoodSuite() {
+            testWindow = window.open('http://localhost:3003', 'foodsuite', 'width=1400,height=900');
+            document.getElementById('tab-results').innerHTML = '<p class="info">FoodSuite wurde geöffnet. Bitte melden Sie sich an und navigieren Sie zu "Mehr" → "Lagerbestand".</p>';
+        }
+        
+        async function testTabs() {
+            const results = document.getElementById('tab-results');
+            
+            if (!testWindow || testWindow.closed) {
+                results.innerHTML = '<p class="error">❌ Bitte öffnen Sie zuerst FoodSuite!</p>';
+                return;
+            }
+            
+            results.innerHTML = '<p class="info">Überprüfe Tabs...</p>';
+            
+            try {
+                // Check if inventory page is loaded
+                const hasInventory = testWindow.document.querySelector('h1')?.textContent.includes('Lagerverwaltung');
+                results.innerHTML += `<p class="${hasInventory ? 'success' : 'error'}">
+                    ${hasInventory ? '✅' : '❌'} Lagerverwaltung Seite geladen
+                </p>`;
+                
+                // Check tabs
+                const tabs = testWindow.document.querySelectorAll('[data-bs-toggle="tab"]');
+                const inventoryTabs = Array.from(tabs).filter(tab => 
+                    tab.textContent.includes('Lagerbestand') || 
+                    tab.textContent.includes('Wareneingang') || 
+                    tab.textContent.includes('Erwartete Lieferungen')
+                );
+                
+                results.innerHTML += `<p class="success">✅ Gefundene Inventory Tabs: ${inventoryTabs.length}</p>`;
+                
+                // Check each tab
+                for (const tab of inventoryTabs) {
+                    const tabName = tab.textContent.trim();
+                    const targetId = tab.getAttribute('data-bs-target');
+                    const isActive = tab.classList.contains('active');
+                    
+                    results.innerHTML += `<p class="info">Tab: ${tabName} (${targetId}) - Aktiv: ${isActive}</p>`;
+                }
+                
+                // Check table content
+                const tables = testWindow.document.querySelectorAll('table tbody');
+                results.innerHTML += `<p class="info">Gefundene Tabellen: ${tables.length}</p>`;
+                
+                tables.forEach((table, index) => {
+                    const rows = table.querySelectorAll('tr');
+                    results.innerHTML += `<p class="info">Tabelle ${index + 1}: ${rows.length} Zeilen</p>`;
+                });
+                
+            } catch (error) {
+                results.innerHTML += `<p class="error">❌ Fehler: ${error.message}</p>`;
+                results.innerHTML += '<p class="error">Möglicherweise blockiert durch CORS. Stellen Sie sicher, dass Sie auf der Lagerverwaltung-Seite sind.</p>';
+            }
+        }
+        
+        async function checkTabData() {
+            const results = document.getElementById('data-results');
+            
+            if (!testWindow || testWindow.closed) {
+                results.innerHTML = '<p class="error">❌ Bitte öffnen Sie zuerst FoodSuite!</p>';
+                return;
+            }
+            
+            results.innerHTML = '<p class="info">Prüfe Tab-Daten...</p>';
+            
+            try {
+                // Execute in FoodSuite context
+                testWindow.console.log('=== LAGERVERWALTUNG TEST ===');
+                
+                // Check if functions exist
+                const functionsExist = {
+                    loadInventory: typeof testWindow.loadInventory === 'function',
+                    loadGoodsReceipts: typeof testWindow.loadGoodsReceipts === 'function',
+                    loadPendingDeliveries: typeof testWindow.loadPendingDeliveries === 'function'
+                };
+                
+                results.innerHTML += '<h4>Funktionen verfügbar:</h4>';
+                for (const [name, exists] of Object.entries(functionsExist)) {
+                    results.innerHTML += `<p class="${exists ? 'success' : 'error'}">
+                        ${exists ? '✅' : '❌'} ${name}
+                    </p>`;
+                }
+                
+                // Try to call functions
+                if (functionsExist.loadGoodsReceipts) {
+                    results.innerHTML += '<p class="info">Rufe loadGoodsReceipts() auf...</p>';
+                    testWindow.loadGoodsReceipts();
+                }
+                
+                if (functionsExist.loadPendingDeliveries) {
+                    results.innerHTML += '<p class="info">Rufe loadPendingDeliveries() auf...</p>';
+                    testWindow.loadPendingDeliveries();
+                }
+                
+                // Check results after delay
+                setTimeout(() => {
+                    const goodsReceiptsTable = testWindow.document.getElementById('goodsReceiptsTableBody');
+                    const pendingDeliveriesTable = testWindow.document.getElementById('pendingDeliveriesTableBody');
+                    
+                    if (goodsReceiptsTable) {
+                        const rows = goodsReceiptsTable.querySelectorAll('tr');
+                        results.innerHTML += `<p class="success">✅ Wareneingang Tabelle: ${rows.length} Zeilen</p>`;
+                        
+                        if (rows.length > 0 && !rows[0].textContent.includes('Keine')) {
+                            results.innerHTML += '<p class="success">✅ Wareneingang hat Daten!</p>';
+                        }
+                    }
+                    
+                    if (pendingDeliveriesTable) {
+                        const rows = pendingDeliveriesTable.querySelectorAll('tr');
+                        results.innerHTML += `<p class="success">✅ Erwartete Lieferungen Tabelle: ${rows.length} Zeilen</p>`;
+                        
+                        if (rows.length > 0 && !rows[0].textContent.includes('Keine')) {
+                            results.innerHTML += '<p class="success">✅ Erwartete Lieferungen hat Daten!</p>';
+                        }
+                    }
+                    
+                    results.innerHTML += '<p class="success">✅ Test abgeschlossen! Überprüfen Sie die FoodSuite-Konsole für Details.</p>';
+                    
+                }, 3000);
+                
+            } catch (error) {
+                results.innerHTML += `<p class="error">❌ Fehler: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

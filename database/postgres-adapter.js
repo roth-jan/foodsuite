@@ -16,7 +16,7 @@ class PostgresAdapter {
     
     // Products
     async getProducts(tenantId, filters = {}) {
-        let query = 'SELECT p.*, s.* FROM products p LEFT JOIN suppliers s ON p.supplier_id = s.id WHERE p.tenant_id = $1';
+        let query = 'SELECT p.*, s.id as supplier_id_alt, s.name as supplier_name, s.contact_person, s.email as supplier_email FROM products p LEFT JOIN suppliers s ON p.supplier_id = s.id WHERE p.tenant_id = $1';
         const params = [tenantId];
         let paramCount = 1;
         
@@ -63,9 +63,9 @@ class PostgresAdapter {
             storage_location: row.storage_location,
             supplier: row.supplier_id ? {
                 id: row.supplier_id,
-                name: result.rows.find(r => r.supplier_id === row.supplier_id)?.name || '',
-                contact_person: result.rows.find(r => r.supplier_id === row.supplier_id)?.contact_person || '',
-                email: result.rows.find(r => r.supplier_id === row.supplier_id)?.email || ''
+                name: row.supplier_name || '',
+                contact_person: row.contact_person || '',
+                email: row.supplier_email || ''
             } : null
         }));
     }

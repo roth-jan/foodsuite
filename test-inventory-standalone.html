@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .success { color: green; }
+        .error { color: red; }
+        .loading { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Lagerverwaltung Test</h1>
+    
+    <div id="status" class="loading">Lade Daten...</div>
+    
+    <h2>Inventory API Test (/api/inventory)</h2>
+    <div id="inventory-result"></div>
+    
+    <h2>Products API Test (/api/products)</h2>
+    <div id="products-result"></div>
+    
+    <script>
+        const API_BASE_URL = 'http://localhost:3003/api';
+        const TENANT_ID = 'demo';
+        
+        async function testEndpoint(endpoint, resultElementId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        'x-tenant-id': TENANT_ID
+                    }
+                });
+                
+                const data = await response.json();
+                const resultElement = document.getElementById(resultElementId);
+                
+                if (response.ok && data.items && data.items.length > 0) {
+                    let html = `<p class="success">✅ Erfolg: ${data.items.length} Einträge gefunden</p>`;
+                    html += '<table><tr><th>Name</th><th>Bestand</th><th>Status</th><th>Wert</th></tr>';
+                    
+                    data.items.slice(0, 5).forEach(item => {
+                        html += `<tr>
+                            <td>${item.name}</td>
+                            <td>${item.stock} ${item.unit}</td>
+                            <td>${item.stock_status || 'N/A'}</td>
+                            <td>€${item.value ? item.value.toFixed(2) : 'N/A'}</td>
+                        </tr>`;
+                    });
+                    
+                    html += '</table>';
+                    if (data.items.length > 5) {
+                        html += `<p>... und ${data.items.length - 5} weitere Einträge</p>`;
+                    }
+                    
+                    resultElement.innerHTML = html;
+                } else {
+                    resultElement.innerHTML = `<p class="error">❌ Keine Daten gefunden oder Fehler: ${response.status}</p>`;
+                }
+            } catch (error) {
+                document.getElementById(resultElementId).innerHTML = 
+                    `<p class="error">❌ Fehler: ${error.message}</p>`;
+            }
+        }
+        
+        // Run tests
+        (async () => {
+            await testEndpoint('/inventory?limit=100', 'inventory-result');
+            await testEndpoint('/products?limit=100', 'products-result');
+            
+            document.getElementById('status').innerHTML = 
+                '<p class="success">✅ Tests abgeschlossen. Öffnen Sie diese Datei im Browser um die Ergebnisse zu sehen.</p>' +
+                '<p>Wenn beide APIs Daten anzeigen, funktioniert die Lagerverwaltung korrekt.</p>';
+        })();
+    </script>
+</body>
+</html>

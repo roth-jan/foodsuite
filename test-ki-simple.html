@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>KI Button Test</title>
+</head>
+<body>
+    <h1>KI Speiseplanung Test</h1>
+    
+    <div style="margin: 20px;">
+        <select id="aiMode">
+            <option value="cost_optimized">Kostenoptimiert</option>
+            <option value="balanced_nutrition">Ausgewogene Ernährung</option>
+            <option value="variety">Maximale Abwechslung</option>
+            <option value="seasonal">Saisonal</option>
+            <option value="inventory_based">Lagerbasiert</option>
+        </select>
+        
+        <button onclick="testGenerateAI()">KI-Plan erstellen</button>
+        <button onclick="testOptimize()">Plan optimieren</button>
+    </div>
+    
+    <div id="result" style="margin: 20px; padding: 10px; border: 1px solid #ccc;">
+        <h3>Ergebnis:</h3>
+        <pre id="output">Noch kein Test ausgeführt</pre>
+    </div>
+    
+    <script>
+        const API_BASE_URL = 'http://localhost:3003/api';
+        const TENANT_ID = 'demo';
+        
+        async function testGenerateAI() {
+            const mode = document.getElementById('aiMode').value;
+            document.getElementById('output').textContent = 'Generiere KI-Plan...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/ai/suggest-meals`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-tenant-id': TENANT_ID
+                    },
+                    body: JSON.stringify({
+                        mode: mode,
+                        weekNumber: 1,
+                        currentPlan: {}
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('output').textContent = 
+                        `✅ Erfolg!\n` +
+                        `Status: ${response.status}\n` +
+                        `Mode: ${data.mode}\n` +
+                        `Meals: ${data.mealPlan ? Object.keys(data.mealPlan).length : 0}\n` +
+                        `Message: ${data.message || 'N/A'}\n\n` +
+                        `Erste 3 Mahlzeiten:\n` +
+                        JSON.stringify(Object.entries(data.mealPlan || {}).slice(0, 3), null, 2);
+                } else {
+                    document.getElementById('output').textContent = 
+                        `❌ Fehler!\n` +
+                        `Status: ${response.status}\n` +
+                        `Error: ${data.error || JSON.stringify(data)}`;
+                }
+            } catch (error) {
+                document.getElementById('output').textContent = 
+                    `❌ Netzwerkfehler!\n${error.message}\n\n` +
+                    `Bitte stelle sicher, dass:\n` +
+                    `1. Der Server läuft (node server.js)\n` +
+                    `2. Port 3003 verfügbar ist\n` +
+                    `3. Die API erreichbar ist`;
+            }
+        }
+        
+        async function testOptimize() {
+            document.getElementById('output').textContent = 'Optimiere Plan...';
+            
+            // Simple test plan
+            const currentPlan = {
+                'monday-breakfast': { id: 1, name: 'Test Frühstück' },
+                'monday-lunch': { id: 2, name: 'Test Mittagessen' },
+                'monday-dinner': { id: 3, name: 'Test Abendessen' }
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/ai/optimize-plan`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-tenant-id': TENANT_ID
+                    },
+                    body: JSON.stringify({
+                        mode: 'cost_optimized',
+                        currentPlan: currentPlan,
+                        weekNumber: 1
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('output').textContent = 
+                        `✅ Optimierung erfolgreich!\n` +
+                        `Status: ${response.status}\n` +
+                        `Suggestions: ${data.suggestions ? data.suggestions.length : 0}\n` +
+                        `Message: ${data.message || 'N/A'}\n\n` +
+                        `Details:\n${JSON.stringify(data, null, 2).substring(0, 500)}...`;
+                } else {
+                    document.getElementById('output').textContent = 
+                        `❌ Fehler!\n` +
+                        `Status: ${response.status}\n` +
+                        `Error: ${data.error || JSON.stringify(data)}`;
+                }
+            } catch (error) {
+                document.getElementById('output').textContent = 
+                    `❌ Netzwerkfehler!\n${error.message}`;
+            }
+        }
+        
+        // Test on load
+        window.onload = () => {
+            document.getElementById('output').textContent = 
+                'Bereit zum Testen!\n\n' +
+                'Diese Seite testet die KI-API direkt.\n' +
+                'Öffne die Browser-Konsole (F12) für weitere Details.';
+        };
+    </script>
+</body>
+</html>

@@ -266,9 +266,92 @@ class InMemoryDatabase {
         this.data.price_alerts = [];
         this.data.price_history = [];
 
+        // Generate goods receipts (Wareneingänge)
+        this.data.goods_receipts = [
+            {
+                id: 1,
+                receipt_number: 'WE-2025-001',
+                date: new Date('2025-01-15').toISOString(),
+                supplier_id: this.data.suppliers[0].id,
+                supplier_name: this.data.suppliers[0].name,
+                order_id: this.data.orders[0].id,
+                total_items: 12,
+                total_value: 1250.00,
+                status: 'partial',
+                status_text: 'Teilweise geprüft',
+                notes: 'Wartet auf Qualitätskontrolle',
+                tenant_id: 'demo',
+                created_at: new Date('2025-01-15').toISOString(),
+                created_by: 'admin'
+            },
+            {
+                id: 2,
+                receipt_number: 'WE-2025-002',
+                date: new Date('2025-01-16').toISOString(),
+                supplier_id: this.data.suppliers[1].id,
+                supplier_name: this.data.suppliers[1].name,
+                order_id: this.data.orders[1].id,
+                total_items: 8,
+                total_value: 890.50,
+                status: 'complete',
+                status_text: 'Vollständig',
+                notes: 'Eingelagert',
+                tenant_id: 'demo',
+                created_at: new Date('2025-01-16').toISOString(),
+                created_by: 'admin'
+            },
+            {
+                id: 3,
+                receipt_number: 'WE-2025-003',
+                date: new Date('2025-01-17').toISOString(),
+                supplier_id: this.data.suppliers[2].id,
+                supplier_name: this.data.suppliers[2].name,
+                order_id: this.data.orders[2].id,
+                total_items: 25,
+                total_value: 2100.00,
+                status: 'checking',
+                status_text: 'In Prüfung',
+                notes: 'Qualitätskontrolle läuft',
+                tenant_id: 'demo',
+                created_at: new Date('2025-01-17').toISOString(),
+                created_by: 'admin'
+            },
+            {
+                id: 4,
+                receipt_number: 'WE-2025-004',
+                date: new Date('2025-01-18').toISOString(),
+                supplier_id: this.data.suppliers[3].id,
+                supplier_name: this.data.suppliers[3].name,
+                total_items: 15,
+                total_value: 1567.80,
+                status: 'complete',
+                status_text: 'Vollständig',
+                notes: 'Alles in Ordnung',
+                tenant_id: 'demo',
+                created_at: new Date('2025-01-18').toISOString(),
+                created_by: 'chef'
+            },
+            {
+                id: 5,
+                receipt_number: 'WE-2025-005',
+                date: new Date('2025-01-19').toISOString(),
+                supplier_id: this.data.suppliers[0].id,
+                supplier_name: this.data.suppliers[0].name,
+                total_items: 20,
+                total_value: 3200.00,
+                status: 'partial',
+                status_text: 'Teilweise geprüft',
+                notes: '2 Positionen fehlen noch',
+                tenant_id: 'demo',
+                created_at: new Date('2025-01-19').toISOString(),
+                created_by: 'admin'
+            }
+        ];
+
         console.log('✅ Canteen test data loaded successfully');
         console.log(`📊 Loaded: ${this.data.products.length} products, ${this.data.recipes.length} recipes, ${this.data.suppliers.length} suppliers`);
         console.log(`📦 Generated: ${this.data.orders.length} orders, ${this.data.inventory_transactions.length} inventory transactions`);
+        console.log(`📥 Generated: ${this.data.goods_receipts.length} goods receipts`);
     }
 
     // Generic SQL query method (for compatibility)

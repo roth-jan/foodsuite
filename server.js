@@ -66,7 +66,7 @@ app.use(cors({
         
         const allowedOrigins = process.env.NODE_ENV === 'production' ? 
             ['https://yourdomain.com'] : 
-            ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:8080', 'null'];
+            ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3003', 'http://127.0.0.1:3003', 'http://localhost:8080', 'null'];
             
         if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('file://')) {
             callback(null, true);
@@ -145,6 +145,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/price-monitoring', require('./routes/price-monitoring'));
+app.use('/api/goods-receipts', require('./routes/goods-receipts'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -187,6 +188,9 @@ async function startServer() {
         // Initialize database
         await db.initialize();
         console.log('✅ Database initialized successfully');
+        
+        // Make database available to routes
+        app.set('db', db);
         
         // Start server
         app.listen(PORT, () => {

@@ -4,313 +4,258 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # FoodSuite - Professional Kitchen Management System
 
-## Overview
-FoodSuite is a comprehensive kitchen management system with two parallel implementations:
-1. **Active Implementation**: Node.js/Express backend with HTML/Bootstrap frontend (foodsuite-complete-app.html)
-2. **Legacy/Reference**: .NET Core/Blazor implementation in src/ directory
+## Project Overview
+FoodSuite is a multi-tenant kitchen management system running on Node.js/Express with a single-page HTML frontend. The server runs on port 3003 by default.
 
-The Node.js implementation is the primary focus for development and deployment.
+## Key Files
+- `foodsuite-complete-app.html` - Complete frontend application
+- `server.js` - Main Express server
+- `database/db-memory.js` - In-memory database with test data
+- `routes/ai.js` - AI meal planning logic
+- `routes/inventory.js` - Inventory management with stock calculations
 
-## Architecture
+## Essential Commands
 
-### Backend (Node.js/Express)
-- **Server**: Express.js with security middleware (Helmet, CORS, rate limiting)
-- **Database**: Custom in-memory database with multi-tenant support (PostgreSQL optional via Docker)
-- **API**: RESTful endpoints with Joi validation
-- **Authentication**: Tenant-based isolation using headers
-- **AI Engine**: Rule-based meal planning in routes/ai.js
-
-### Frontend (HTML/Bootstrap)
-- **UI Framework**: Bootstrap 5 with custom CSS
-- **JavaScript**: Vanilla JS with modular functions
-- **Components**: Modal-based forms and data tables
-- **API Integration**: Fetch-based HTTP client
-- **Drag & Drop**: Custom implementation for meal planning
-
-### Key Files and Structure
-- `server.js` - Main Express server with middleware configuration
-- `routes/` - API route handlers (products, suppliers, orders, recipes, etc.)
-- `routes/ai.js` - AI meal planning engine with rule-based logic
-- `scripts/` - Database initialization and seeding scripts
-- `foodsuite-complete-app.html` - Single-page frontend application
-- `tests/` - Playwright and custom test files
-- Docker configs: `docker-compose.yml` (production), `docker-compose.dev.yml` (development)
-
-## Key Features
-
-### Multi-Tenant Support
-- Tenant isolation via `x-tenant-id` header
-- Automatic data filtering by tenant
-- Default tenant: 'demo'
-
-### AI-Powered Meal Planning
-The AI assistant in routes/ai.js provides:
-- **5 Preset AI Modes**: cost_optimized, balanced_nutrition, variety, seasonal, inventory_based
-- **Custom AI Mode Designer**: Create and save custom AI configurations with:
-  - Weight sliders for cost, health, variety, and speed
-  - Budget constraints (per meal and weekly)
-  - Nutrition targets (calories, protein, etc.)
-  - Ingredient/allergen exclusions (e.g., no pork/beef)
-  - Category filtering
-  - Cuisine preferences
-- **Rule-based logic** (not external AI service)
-- **Real-time plan adjustments**
-- **Shopping list generation**
-- **Order suggestions**
-
-### Current Implementation Status
-- ✅ All CRUD operations functional
-- ✅ Drag & drop meal planning working
-- ✅ AI meal plan generation working with 100+ recipes
-- ✅ Multi-tenant isolation working
-- ✅ Custom AI mode designer functional
-- ✅ Health check endpoints implemented (/health, /api/health)
-- ⚠️ Custom AI exclusions work ~80% (some edge cases with ingredient mappings)
-
-## Development Commands
-
+### Server Operations
 ```bash
-# Install dependencies
-npm install
+# Start server (defaults to memory database)
+node server.js
 
-# Start development server (with nodemon)
+# Start with PostgreSQL database
+DB_TYPE=postgres node server.js
+
+# Development mode with auto-reload
 npm run dev
 
-# Start production server
-npm start
-
-# Docker commands
-docker-compose -f docker-compose.dev.yml up -d  # Development with PostgreSQL
-docker-compose up -d                             # Production setup
-./docker-quick-start.ps1                         # Windows quick start
-./docker-start.sh                                # Linux/Mac quick start
-
-# Run Playwright tests
-npx playwright test
-npx playwright test --headed  # With browser window
-npx playwright test --ui      # Interactive UI mode
-
-# Test specific features
-npx playwright test tests/test-ai-meal-planning.js
-npx playwright test tests/test-drag-drop.js
-
-# Database commands
-npm run init-db      # Initialize database structure
-npm run seed-db      # Load canteen test data
-npm run reset-db     # Reset database to initial state
-
-# Linting and type checking (if configured)
-npm run lint         # Run ESLint
-npm run lint:fix     # Auto-fix linting issues
+# Windows-specific restart scripts
+powershell -ExecutionPolicy Bypass -File restart-server.ps1
+restart-with-memory-db.bat
 ```
 
-## Docker Support
-
-### Development Stack (docker-compose.dev.yml)
-- PostgreSQL database for persistent storage
-- Hot-reload with volume mounts
-- Environment variables via .env file
-
-### Production Stack (docker-compose.yml)
-- Nginx reverse proxy with SSL
-- Health checks configured
-- Restart policies
-
-### Environment Variables
+### Database Operations
 ```bash
-DB_TYPE=postgres          # or 'memory' for in-memory
-DB_PASSWORD=foodsuite123
-NODE_ENV=development
-DEFAULT_TENANT_ID=demo
+# Initialize database schema (PostgreSQL only)
+npm run init-db
+
+# Seed with test data
+npm run seed-db
+
+# Update inventory with realistic values
+node scripts/update-realistic-inventory.js
 ```
 
-## Server Configuration
+### Testing
+```bash
+# Run individual test files directly
+node test-inventory-direct.js
+node test-api-products.js
+node test-products-direct.js
 
-### Rate Limiting
-Currently disabled for testing. To re-enable:
+# Run Playwright tests (requires server running)
+npx playwright test test-inventory-playwright.js
+
+# Browser-based testing
+# Open test-inventory-browser.html in browser
+```
+
+## Critical Architecture Patterns
+
+### Database Architecture
+The system supports two database types, controlled by `DB_TYPE` environment variable:
+- **memory** (default): In-memory database with test data, resets on restart
+- **postgres**: PostgreSQL adapter, requires external database
+
+Database selection happens in server.js:
 ```javascript
-app.use(limiter); // Uncomment in server.js line 56
+const dbType = process.env.DB_TYPE || 'memory';
+const db = dbType === 'postgres' ? require('./database/postgres-adapter') : require('./database/db-memory');
 ```
 
-### CORS Configuration
-Configured to accept requests from:
-- http://localhost:3000
-- http://127.0.0.1:3000
-- file:// URLs
-- null origin
+### Multi-Tenant Architecture
+All API requests require tenant isolation via `x-tenant-id` header:
+```javascript
+// Server middleware extracts tenant ID
+req.tenantId = req.headers['x-tenant-id'] || 'demo';
 
-## API Endpoints
+// Data filtering includes fallback logic
+product.tenant_id === req.tenantId || product.tenant_id === 'demo' || product.tenant_id === 1
+```
 
-### Health Check Endpoints
-- `GET /health` - Basic health check for Docker
-- `GET /api/health` - Detailed API health status
-
-### AI Endpoints
-- `POST /api/ai/suggest-meals` - Generate AI meal plan
-  ```json
-  {
-    "mode": "variety",
-    "weekNumber": 1,
-    "currentPlan": {},
-    "customConfig": {  // Optional for custom mode
-      "type": "custom",
-      "weights": { "cost": 0.8, "health": 0.2, "variety": 0.5, "speed": 0.3 },
-      "exclusions": {
-        "ingredients": ["Schwein", "Rind"],
-        "allergens": [],
-        "categories": []
-      },
-      "budget": { "maxCostPerMeal": 3.00 },
-      "nutrition": { "minCalories": 500, "maxCalories": 800 }
-    }
-  }
-  ```
-
-### Standard CRUD Endpoints
-All endpoints require `x-tenant-id` header:
-- `/api/products` - Product management
-- `/api/suppliers` - Supplier management
-- `/api/orders` - Order management
-- `/api/recipes` - Recipe management
-- `/api/inventory` - Inventory tracking
-- `/api/mealplans` - Meal plan management
-- `/api/analytics` - Analytics and reporting
-- `/api/auth` - Authentication (no tenant header required)
-- `/api/price-monitoring` - Price monitoring and alerts
-
-## Frontend Key Functions
-
-### Meal Planning
-- `loadMealPlanning()` - Initializes meal planning view
-- `generateAIWeekMenu()` - Generates AI meal plan (supports custom configs)
-- `createMealCalendar()` - Renders drag & drop calendar
-- `getCurrentAIMode()` - Gets selected AI assistant mode
-- `buildCustomConfig()` - Creates custom AI configuration from UI inputs
-- `addCustomModeButton()` - Adds saved custom mode to UI
-- `loadSavedCustomModes()` - Loads custom modes from localStorage
+**Known Issue**: Mixed tenant ID types (numeric 1 vs string 'demo') require careful handling.
 
 ### API Integration Pattern
+Frontend always includes tenant header:
 ```javascript
 const response = await fetch(`${API_BASE_URL}/endpoint`, {
     headers: {
         'Content-Type': 'application/json',
-        'x-tenant-id': TENANT_ID
-    },
-    // ... options
+        'x-tenant-id': TENANT_ID  // Always 'demo' in current implementation
+    }
 });
 ```
 
+### Inventory System
+The inventory system tracks:
+- Stock levels with min/max thresholds
+- Consumption rates based on transaction history
+- Stock status: out_of_stock, critical, low, normal, high
+- Perishable item tracking with expiry dates
+
+Stock status calculation in routes/inventory.js considers:
+1. Current quantity vs min/max stock levels
+2. Consumption rate for predictive alerts
+3. Perishable status for expiry warnings
+
+### AI Meal Planning Engine
+Located in routes/ai.js, the AI system is rule-based (not ML) with:
+- 5 preset modes: cost_optimized, balanced_nutrition, variety, seasonal, inventory_based
+- Custom mode designer with weight sliders and exclusions
+- Ingredient mappings for exclusion handling (e.g., "Schwein" → pork dishes)
+
+**Known Issue**: Exclusions work ~80% due to incomplete INGREDIENT_MAPPINGS.
+
+## Common Issues & Solutions
+
+### PostgreSQL Data Corruption
+**Problem**: Product names overwritten with supplier names
+**Solution**: Switch to memory database:
+```bash
+# Update .env file
+DB_TYPE=memory
+
+# Restart server
+powershell -ExecutionPolicy Bypass -File restart-server.ps1
+```
+
+### No Products/Inventory Showing
+**Problem**: Tenant ID mismatch or uninitialized database
+**Solution**: 
+1. Ensure `x-tenant-id: demo` header in all requests
+2. Restart server to reinitialize memory database
+3. Run `node scripts/update-realistic-inventory.js` for realistic data
+
+### Port Already in Use
+**Problem**: Previous server instance still running on port 3003
+**Solution**:
+```bash
+# Windows
+taskkill /F /IM node.exe
+
+# Or use provided script
+kill-node-server.bat
+```
+
+### CORS Errors with Local Files
+**Problem**: Opening HTML file directly causes CORS issues
+**Solution**: Server configured to accept file:// and null origins, but ensure server is running
+
+### AI Meal Planning Shows €0 Costs
+**Problem**: Recipe costs show as €0/Portion in meal planning
+**Solution**: The API returns cost_per_portion=0 when recipe_ingredients are empty. This is expected behavior with test data.
+
 ## Testing Strategy
 
-### Local Testing
+### Manual Testing Flow
 1. Start server: `node server.js`
-2. Open browser: http://localhost:3000
-3. Click "KI-Speiseplanung" tab
-4. AI will auto-generate meal plan if calendar is empty
+2. Open http://localhost:3003 or foodsuite-complete-app.html
+3. Test with default credentials: admin/Demo123!
+4. For inventory testing: Run update script first
+5. For AI testing: Click "KI-Plan erstellen" button
 
 ### Automated Testing
+No formal test framework configured. Test files run standalone:
+- API tests: Direct HTTP requests to endpoints
+- Browser tests: Playwright scripts or HTML test pages
+- Database tests: Direct database operations
+
+### Useful Development Scripts
 ```bash
-# Full test suite
-npm test
+# Fill warehouse with realistic data
+node scripts/create-realistic-warehouse-data.js
+node scripts/fill-warehouse-data.js
 
-# Specific test files
-npx playwright test tests/test-ai-meal-planning.js
-npx playwright test tests/test-drag-drop.js
-
-# Custom mode testing
-node test-custom-mode-simple.js
-node test-health.js
+# Generate analytics data
+node scripts/generate-analytics-data.js
+node scripts/generate-historical-data.js
 ```
 
-## Deployment
-
-### AWS EC2 Instance
-- Running at: http://3.120.41.138:3000
-- Uses PM2 for process management
-- Nginx reverse proxy configured
+## Deployment Notes
 
 ### Local Development
-- Default port: 3000
-- In-memory database (resets on restart) or PostgreSQL via Docker
-- No external dependencies required
+- Default port: 3003
+- Memory database resets on restart
+- No external dependencies for basic operation
 
-## Important Implementation Notes
+### Docker Support
+```bash
+# Development with PostgreSQL
+docker-compose -f docker-compose.dev.yml up -d
 
-1. **AI is Rule-Based**: The "AI" in routes/ai.js uses algorithms, not ML models
-2. **Test Data Language**: All test data is in German (products, recipes, suppliers)
-3. **Database Persistence**: In-memory by default, PostgreSQL optional via Docker
-4. **Auto-Generation**: Meal plans auto-generate when opening empty calendar
-5. **Drag & Drop**: Fully functional between calendar cells and from recipe library
-6. **Custom Modes**: Saved in browser localStorage, persist across sessions
-7. **Health Checks**: Required for Docker deployments at /health and /api/health
-
-## Code Conventions
-
-### Backend
-- Use Joi for validation
-- Return `{ error: "message" }` for errors
-- Log transactions for inventory changes
-- Use async/await consistently
-- All routes return JSON with consistent structure
-- Use proper HTTP status codes (200, 400, 404, 500)
-- Handle multi-tenant isolation via tenant middleware
-
-### Frontend
-- Modal-based forms for all data entry
-- Show toast notifications for user feedback
-- Refresh data after successful operations
-- Maintain vanilla JavaScript (no frameworks)
-- Use Bootstrap 5 CSS classes for styling
-- Implement loading states for async operations
-
-### Error Handling
-```javascript
-// Backend error response format
-{ error: "Descriptive error message" }
-
-// Frontend error handling pattern
-try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Request failed');
-    }
-    return await response.json();
-} catch (error) {
-    showToast(error.message, 'error');
-}
+# Production setup
+docker-compose up -d
 ```
 
-## Recent Changes
+### Health Checks
+- `/health` - Basic health check for Docker
+- `/api/health` - Detailed API status
 
-### 2025-07-19
-- Added custom AI mode designer with exclusions and preferences
-- Implemented health check endpoints for Docker support
-- Created Docker development stack with PostgreSQL
-- Fixed ingredient exclusion mappings for German recipes
-- Added Windows PowerShell and Linux/Mac quick start scripts
+## Key Implementation Details
 
-### 2025-07-18
-- Fixed CORS configuration for file:// URLs
-- Disabled rate limiting for testing
-- Added auto-generation of meal plans on tab load
-- Fixed API response structure mismatch in frontend
+### Frontend Structure
+Single file `foodsuite-complete-app.html` contains:
+- Complete UI with Bootstrap 5
+- All JavaScript functionality inline
+- Modal-based CRUD operations
+- Drag-and-drop meal planning
+- Real-time cost calculations
+- KI button fixes applied via inline script
 
-## Known Issues & Workarounds
+### Backend Routes
+All routes follow RESTful patterns with Joi validation:
+- `/api/products` - Product management with categories and allergens
+- `/api/inventory` - Stock tracking with realistic calculations
+- `/api/recipes` - Recipe management with ingredient tracking
+- `/api/ai/suggest-meals` - AI meal planning engine (rule-based)
+- `/api/mealplans` - Meal plan CRUD with drag-drop support
+- `/api/goods-receipts` - Warehouse receiving and inventory updates
+- `/api/price-monitoring` - Price tracking and trend analysis
+- `/api/analytics` - Dashboard statistics and business intelligence
+- `/api/orders` - Order management system
+- `/api/suppliers` - Supplier management with ratings
+- `/api/users` - User management
+- `/api/roles` - Role-based access control
+- `/api/tenants` - Multi-tenant configuration
 
-### Custom AI Mode Designer
-- Exclusions work ~80% - some dishes with meat ingredients aren't caught
-- Workaround: Check generated plans and manually adjust
-- Fix planned: Enhance INGREDIENT_MAPPINGS in routes/ai.js
+### Database Schema
+Core tables with multi-tenant support:
+- All tables include `tenant_id` for isolation
+- Timestamps: `created_at`, `updated_at`
+- Status values: 'active', 'inactive', 'deleted'
+- Products include allergens and nutritional data
+- Inventory tracks expiry dates and transaction history
+- Full audit trail via inventory_transactions
 
-### Docker on Windows
-- Use PowerShell scripts (*.ps1) instead of bash scripts
-- Git Bash may have issues with paths - use native PowerShell
+### Authentication & Security
+- JWT-based with Bearer tokens
+- Role-based permissions (admin, chef, viewer)
+- Default users created on initialization
+- 24-hour token expiry
+- Middleware: `middleware/auth-middleware.js`
+- Utils: `utils/auth.js` for token management
 
-### Testing
-- Server must be running before tests: `node server.js`
-- Use test-custom-mode-simple.js to verify exclusions
-- Use test-health.js to verify health endpoints
-- Playwright tests require server to be running on port 3000
-- Many test files are numbered/versioned - use latest versions
-- Test files cover: drag-drop, AI functionality, auth system, API integration
+### Testing Infrastructure
+Multiple testing approaches:
+- `test-*-direct.js` - Direct API tests
+- `test-*-playwright.js` - Browser automation
+- `test-*-browser.html` - Standalone HTML tests
+- `test-api-*.js` - API endpoint tests
+- Windows batch files for test automation
+
+### Recent Changes (July 2025)
+- Added realistic inventory management with stock status calculations
+- Implemented custom AI mode designer with exclusions
+- Fixed CORS for file:// protocol access and localhost:3003
+- Added health check endpoints for Docker deployments
+- Created Windows-specific restart scripts
+- Fixed meal planning CSS for better layout
+- Corrected cost display calculations in meal planning
