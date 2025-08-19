@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db-memory');
 const { updateRealisticInventory, generateInventoryAlerts } = require('../scripts/update-realistic-inventory');
+const { authenticate } = require('../middleware/auth-middleware');
+
+// Apply authentication to all inventory routes
+router.use(authenticate);
 
 // Note: tenantId is already set by server.js middleware
 
@@ -308,6 +312,61 @@ router.get('/availability/:recipe_id', async (req, res) => {
     } catch (error) {
         console.error('Error checking ingredient availability:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Get inventory alerts (new endpoint)
+router.get('/alerts', async (req, res) => {
+    try {
+        const alerts = await db.getInventoryAlerts(req.tenantId);
+        res.json(alerts);
+    } catch (error) {
+        console.error('Error fetching inventory alerts:', error);
+        res.status(500).json({ error: 'Failed to fetch inventory alerts' });
+    }
+});
+
+// Get low stock products (new endpoint)
+router.get('/low-stock', async (req, res) => {
+    try {
+        const products = await db.getLowStockProducts(req.tenantId);
+        res.json(products);
+    } catch (error) {
+        console.error('Error fetching low stock products:', error);
+        res.status(500).json({ error: 'Failed to fetch low stock products' });
+    }
+});
+
+// Get reorder suggestions (new endpoint)
+router.get('/reorder-suggestions', async (req, res) => {
+    try {
+        const suggestions = await db.generateReorderSuggestions(req.tenantId);
+        res.json(suggestions);
+    } catch (error) {
+        console.error('Error generating reorder suggestions:', error);
+        res.status(500).json({ error: 'Failed to generate reorder suggestions' });
+    }
+});
+
+// Update minimum stock levels (new endpoint)
+router.put('/:productId/min-stock', async (req, res) => {
+    try {
+        const { minStock, reorderPoint } = req.body;
+        
+        const product = await db.updateProductMinStock(
+            parseInt(req.params.productId),
+            minStock,
+            reorderPoint
+        );
+        
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found' });
+        }
+        
+        res.json(product);
+    } catch (error) {
+        console.error('Error updating minimum stock:', error);
+        res.status(500).json({ error: 'Failed to update minimum stock' });
     }
 });
 

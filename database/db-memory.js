@@ -40,7 +40,13 @@ class InMemoryDatabase {
             goods_receipts: [],
             goods_receipt_items: [],
             user_roles: userManagement.userRoles,
-            approval_states: userManagement.approvalStates
+            approval_states: userManagement.approvalStates,
+            
+            // FAKTURIERUNG / INVOICING
+            invoices: [],
+            invoice_items: [],
+            invoice_payments: [],
+            customers: []
         };
         this.nextId = 1000; // Start with higher ID for new records
     }
@@ -119,6 +125,52 @@ class InMemoryDatabase {
             }
         ];
 
+        // Seed customers for invoicing
+        this.data.customers = [
+            {
+                id: 1,
+                tenantId: 'demo',
+                name: 'Firma Müller GmbH',
+                contactPerson: 'Frau Sabine Müller',
+                email: 'buchhaltung@mueller-gmbh.de',
+                phone: '+49 89 12345-0',
+                address: 'Industriestraße 23, 80339 München',
+                taxId: 'DE123456789',
+                customerNumber: 'K-2024-001',
+                paymentTerms: 30,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 2,
+                tenantId: 'demo',
+                name: 'Schulzentrum München-West',
+                contactPerson: 'Herr Dr. Schmidt',
+                email: 'verwaltung@schulzentrum-mw.de',
+                phone: '+49 89 67890-0',
+                address: 'Schulweg 15, 80689 München',
+                taxId: 'DE987654321',
+                customerNumber: 'K-2024-002',
+                paymentTerms: 45,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 3,
+                tenantId: 'demo',
+                name: 'Seniorenheim Sonnenschein',
+                contactPerson: 'Frau Marion Weber',
+                email: 'leitung@seniorenheim-sonnenschein.de',
+                phone: '+49 89 34567-0',
+                address: 'Altenheimstraße 8, 80331 München',
+                taxId: 'DE456789123',
+                customerNumber: 'K-2024-003',
+                paymentTerms: 60,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }
+        ];
+        
         // Load extensive test data from canteen-test-data.js
         this.data.suppliers = canteenTestData.suppliers;
         this.data.products = canteenTestData.products; // Legacy-Kompatibilität
@@ -1306,6 +1358,324 @@ class InMemoryDatabase {
         if (unitType === 'ml') return value / 1000;
         
         return value;
+    }
+    
+    // === INVOICE FUNCTIONS ===
+    async getInvoices(tenantId) {
+        return this.data.invoices.filter(i => i.tenantId === tenantId);
+    }
+    
+    async getInvoice(id, tenantId) {
+        const invoice = this.data.invoices.find(i => i.id === id && i.tenantId === tenantId);
+        if (!invoice) return null;
+        
+        // Add payment information
+        const payments = this.data.invoice_payments.filter(p => p.invoiceId === id);
+        const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+        
+        return {
+            ...invoice,
+            payments,
+            totalPaid,
+            balance: invoice.total - totalPaid
+        };
+    }
+    
+    async getInvoiceCount(tenantId) {
+        const year = new Date().getFullYear();
+        return this.data.invoices.filter(i => 
+            i.tenantId === tenantId && 
+            new Date(i.createdAt).getFullYear() === year
+        ).length;
+    }
+    
+    async createInvoice(invoice) {
+        this.data.invoices.push(invoice);
+        
+        // Store invoice items separately for better querying
+        if (invoice.items) {
+            invoice.items.forEach(item => {
+                this.data.invoice_items.push({
+                    id: this.nextId++,
+                    invoiceId: invoice.id,
+                    ...item
+                });
+            });
+        }
+        
+        return invoice;
+    }
+    
+    async updateInvoiceStatus(id, status, tenantId) {
+        const invoice = this.data.invoices.find(i => i.id === id && i.tenantId === tenantId);
+        if (!invoice) return null;
+        
+        invoice.status = status;
+        invoice.updatedAt = new Date().toISOString();
+        
+        // Auto-update payment status
+        if (status === 'paid') {
+            const payments = this.data.invoice_payments.filter(p => p.invoiceId === id);
+            const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+            
+            if (totalPaid < invoice.total) {
+                // Create automatic payment record for the remaining amount
+                this.data.invoice_payments.push({
+                    id: this.nextId++,
+                    invoiceId: id,
+                    amount: invoice.total - totalPaid,
+                    paymentDate: new Date().toISOString(),
+                    paymentMethod: 'manual',
+                    reference: 'Status update to paid',
+                    createdAt: new Date().toISOString()
+                });
+            }
+        }
+        
+        return invoice;
+    }
+    
+    async addInvoicePayment(invoiceId, payment, tenantId) {
+        const invoice = this.data.invoices.find(i => i.id === invoiceId && i.tenantId === tenantId);
+        if (!invoice) return null;
+        
+        this.data.invoice_payments.push(payment);
+        
+        // Check if invoice is fully paid
+        const payments = this.data.invoice_payments.filter(p => p.invoiceId === invoiceId);
+        const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+        
+        if (totalPaid >= invoice.total) {
+            invoice.status = 'paid';
+            invoice.paidDate = new Date().toISOString();
+        }
+        
+        invoice.updatedAt = new Date().toISOString();
+        
+        return payment;
+    }
+    
+    async getInvoiceStats(tenantId) {
+        const invoices = this.data.invoices.filter(i => i.tenantId === tenantId);
+        const payments = this.data.invoice_payments.filter(p => 
+            invoices.some(i => i.id === p.invoiceId)
+        );
+        
+        const stats = {
+            total: invoices.length,
+            totalValue: invoices.reduce((sum, i) => sum + i.total, 0),
+            totalPaid: payments.reduce((sum, p) => sum + p.amount, 0),
+            byStatus: {
+                draft: invoices.filter(i => i.status === 'draft').length,
+                sent: invoices.filter(i => i.status === 'sent').length,
+                paid: invoices.filter(i => i.status === 'paid').length,
+                overdue: invoices.filter(i => i.status === 'overdue').length,
+                cancelled: invoices.filter(i => i.status === 'cancelled').length
+            },
+            outstanding: 0,
+            overdue: 0
+        };
+        
+        // Calculate outstanding and overdue
+        invoices.forEach(invoice => {
+            if (invoice.status !== 'paid' && invoice.status !== 'cancelled') {
+                const invoicePayments = payments.filter(p => p.invoiceId === invoice.id);
+                const paid = invoicePayments.reduce((sum, p) => sum + p.amount, 0);
+                const outstanding = invoice.total - paid;
+                
+                stats.outstanding += outstanding;
+                
+                if (new Date(invoice.dueDate) < new Date() && invoice.status !== 'paid') {
+                    stats.overdue += outstanding;
+                }
+            }
+        });
+        
+        return stats;
+    }
+    
+    // Customer functions for invoicing
+    async getCustomers(tenantId) {
+        return this.data.customers.filter(c => c.tenantId === tenantId);
+    }
+    
+    async createCustomer(customer) {
+        const newCustomer = {
+            id: this.nextId++,
+            ...customer,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        this.data.customers.push(newCustomer);
+        return newCustomer;
+    }
+    
+    // === ADVANCED INVENTORY FUNCTIONS ===
+    
+    // Update product minimum stock levels
+    async updateProductMinStock(productId, minStock, reorderPoint) {
+        const product = this.data.products.find(p => p.id === productId);
+        if (!product) return null;
+        
+        product.min_stock = minStock;
+        product.reorder_point = reorderPoint;
+        product.updated_at = new Date().toISOString();
+        
+        return product;
+    }
+    
+    // Get products below minimum stock
+    async getLowStockProducts(tenantId) {
+        const products = this.data.products.filter(p => 
+            (p.tenant_id === tenantId || p.tenant_id === 'demo' || p.tenant_id === 1) && 
+            p.stock <= p.min_stock
+        );
+        
+        return products.map(p => ({
+            ...p,
+            stock_status: p.stock === 0 ? 'out_of_stock' : 
+                         p.stock <= p.min_stock ? 'low_stock' : 'in_stock',
+            reorder_needed: p.stock <= (p.reorder_point || p.min_stock * 1.5),
+            days_until_empty: p.consumption_rate_per_day ? Math.floor(p.stock / p.consumption_rate_per_day) : null
+        }));
+    }
+    
+    // Get inventory alerts
+    async getInventoryAlerts(tenantId) {
+        const alerts = {
+            critical: [],
+            low: [],
+            reorder: []
+        };
+        const products = this.data.products.filter(p => 
+            p.tenant_id === tenantId || p.tenant_id === 'demo' || p.tenant_id === 1
+        );
+        
+        products.forEach(product => {
+            // Out of stock
+            if (product.stock === 0) {
+                alerts.critical.push({
+                    id: `out-${product.id}`,
+                    type: 'out_of_stock',
+                    severity: 'critical',
+                    productId: product.id,
+                    product: product.name,
+                    message: `ist nicht mehr vorrätig!`,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            // Below minimum stock
+            else if (product.stock <= product.min_stock) {
+                alerts.low.push({
+                    id: `low-${product.id}`,
+                    type: 'low_stock',
+                    severity: 'warning',
+                    productId: product.id,
+                    product: product.name,
+                    currentStock: product.stock,
+                    minStock: product.min_stock,
+                    message: `unterschreitet Mindestbestand (${product.stock}/${product.min_stock} ${product.unit})`,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            // Reorder point reached
+            const reorderPoint = product.reorder_point || (product.min_stock * 1.5);
+            if (product.stock <= reorderPoint && product.stock > product.min_stock) {
+                alerts.reorder.push({
+                    id: `reorder-${product.id}`,
+                    type: 'reorder_point',
+                    severity: 'info',
+                    productId: product.id,
+                    product: product.name,
+                    currentStock: product.stock,
+                    reorderPoint: reorderPoint,
+                    message: `hat Bestellpunkt erreicht (${product.stock} ${product.unit})`,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            // Check expiring products (if we have batch data)
+            const receipts = this.data.goods_receipt_items.filter(item => 
+                item.product_id === product.id && item.expiry_date
+            );
+            
+            receipts.forEach(item => {
+                const daysUntilExpiry = Math.floor((new Date(item.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
+                if (daysUntilExpiry <= 7 && daysUntilExpiry > 0) {
+                    alerts.push({
+                        id: `expiry-${item.id}`,
+                        type: 'expiring_soon',
+                        severity: 'warning',
+                        productId: product.id,
+                        productName: product.name,
+                        batchNumber: item.batch_number,
+                        expiryDate: item.expiry_date,
+                        daysUntilExpiry,
+                        message: `${product.name} (Charge: ${item.batch_number}) läuft in ${daysUntilExpiry} Tagen ab`,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            });
+        });
+        
+        return alerts;
+    }
+    
+    // Generate automatic reorder suggestions
+    async generateReorderSuggestions(tenantId) {
+        const suggestions = [];
+        const products = this.data.products.filter(p => 
+            (p.tenant_id === tenantId || p.tenant_id === 'demo' || p.tenant_id === 1) && 
+            p.stock <= (p.reorder_point || p.min_stock * 1.5)
+        );
+        
+        for (const product of products) {
+            // Calculate suggested order quantity
+            const avgConsumption = product.consumption_rate_per_day || 5; // Use stored rate or default
+            const leadTimeDays = 3; // Default lead time
+            const safetyStock = product.min_stock || 10;
+            const targetStock = safetyStock * 3; // Order enough for 3x min stock
+            const suggestedQuantity = Math.ceil(targetStock - product.stock);
+            
+            if (suggestedQuantity > 0) {
+                // Find supplier info
+                const supplier = this.data.suppliers.find(s => s.id === product.supplier_id);
+                
+                suggestions.push({
+                    product_id: product.id,
+                    product_name: product.name,
+                    current_stock: product.stock,
+                    min_stock: product.min_stock,
+                    reorder_point: product.reorder_point || product.min_stock * 1.5,
+                    suggested_quantity: suggestedQuantity,
+                    unit: product.unit,
+                    estimated_cost: suggestedQuantity * product.price,
+                    supplier_id: product.supplier_id,
+                    supplier_name: supplier ? supplier.name : null,
+                    urgency: product.stock === 0 ? 'critical' : 
+                            product.stock <= product.min_stock ? 'high' : 'normal'
+                });
+            }
+        }
+        
+        return suggestions;
+    }
+    
+    // Calculate average consumption
+    async calculateAverageConsumption(productId, days) {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        
+        const transactions = this.data.inventory_transactions.filter(t => 
+            t.product_id === productId && 
+            t.type === 'consumption' &&
+            new Date(t.created_at) >= startDate &&
+            new Date(t.created_at) <= endDate
+        );
+        
+        const totalConsumption = transactions.reduce((sum, t) => sum + Math.abs(t.quantity_change), 0);
+        return totalConsumption / days;
     }
 }
 

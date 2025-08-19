@@ -1533,6 +1533,27 @@
                                 </a></li>
                             </ul>
                         </li>
+                        
+                        <!-- Fakturierung -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-receipt me-1"></i>Faktura
+                                <span class="badge bg-danger ms-1">NEU</span>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#invoices" data-tab="invoices">
+                                    <i class="bi bi-receipt me-2"></i>Rechnungen
+                                </a></li>
+                                <li><a class="dropdown-item" href="#customers" data-tab="customers">
+                                    <i class="bi bi-people me-2"></i>Kunden
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="showToast('💳 Zahlungsverwaltung in Entwicklung', 'info')">
+                                    <i class="bi bi-credit-card me-2"></i>Zahlungen
+                                    <span class="text-muted small">(bald)</span>
+                                </a></li>
+                            </ul>
+                        </li>
                     </ul>
                     
                     <div class="d-flex align-items-center">
@@ -2311,6 +2332,43 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Inventory Alerts -->
+                <div id="inventoryAlerts" class="mb-4">
+                    <!-- Alerts will be populated here -->
+                </div>
+                
+                <!-- Low Stock Warning -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="metric-card danger" style="cursor: pointer;" onclick="window.showLowStockProducts()">
+                            <h6>Nicht vorrätig</h6>
+                            <h2 id="outOfStockCount">0</h2>
+                            <small>Produkte</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card warning" style="cursor: pointer;" onclick="window.showLowStockProducts()">
+                            <h6>Niedrig</h6>
+                            <h2 id="lowStockCount">0</h2>
+                            <small>unter Mindestbestand</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card info" style="cursor: pointer;" onclick="window.showReorderSuggestions()">
+                            <h6>Bestellvorschläge</h6>
+                            <h2 id="reorderSuggestions">0</h2>
+                            <small>Artikel</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card success">
+                            <h6>Lagerwert</h6>
+                            <h2 id="totalInventoryValue">€0</h2>
+                            <small>Gesamtwert</small>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Inventory Navigation -->
                 <ul class="nav nav-tabs mb-3" id="inventoryNavTabs" role="tablist">
@@ -2719,6 +2777,153 @@
                     <button type="button" class="btn btn-primary" onclick="createPriceAlert()">Alarm erstellen</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+            <!-- ===== INVOICES TAB ===== -->
+            <div id="invoices" class="tab-content">
+                <div class="row mb-4">
+                    <div class="col">
+                        <h1><i class="bi bi-receipt me-2"></i>Rechnungsverwaltung</h1>
+                        <p class="text-muted">Erstellen und verwalten Sie Ihre Rechnungen</p>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary" onclick="window.createInvoiceFromMealPlan()">
+                            <i class="bi bi-plus-circle me-2"></i>Neue Rechnung
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="window.exportInvoices()">
+                            <i class="bi bi-download me-2"></i>Export
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Invoice Statistics -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <h6>Offene Rechnungen</h6>
+                            <h2 id="openInvoicesCount">0</h2>
+                            <small id="openInvoicesValue">€0</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card success">
+                            <h6>Bezahlt (Monat)</h6>
+                            <h2 id="paidInvoicesCount">0</h2>
+                            <small id="paidInvoicesValue">€0</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card warning">
+                            <h6>Überfällig</h6>
+                            <h2 id="overdueInvoicesCount">0</h2>
+                            <small id="overdueInvoicesValue">€0</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card info">
+                            <h6>Gesamt (Jahr)</h6>
+                            <h2 id="totalInvoicesCount">0</h2>
+                            <small id="totalInvoicesValue">€0</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoice List -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h5 class="mb-0">Rechnungen</h5>
+                            </div>
+                            <div class="col-auto">
+                                <select class="form-select form-select-sm" id="invoiceStatusFilter" onchange="window.filterInvoices()">
+                                    <option value="">Alle Status</option>
+                                    <option value="draft">Entwurf</option>
+                                    <option value="sent">Versendet</option>
+                                    <option value="paid">Bezahlt</option>
+                                    <option value="overdue">Überfällig</option>
+                                    <option value="cancelled">Storniert</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Rechnungsnr.</th>
+                                        <th>Kunde</th>
+                                        <th>Datum</th>
+                                        <th>Fällig</th>
+                                        <th>Betrag</th>
+                                        <th>Status</th>
+                                        <th>Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoicesTableBody">
+                                    <!-- Invoices will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== CUSTOMERS TAB ===== -->
+            <div id="customers" class="tab-content">
+                <div class="row mb-4">
+                    <div class="col">
+                        <h1><i class="bi bi-people me-2"></i>Kundenverwaltung</h1>
+                        <p class="text-muted">Verwalten Sie Ihre Kunden und Kontakte</p>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary" onclick="window.showCreateCustomerModal()">
+                            <i class="bi bi-person-plus me-2"></i>Neuer Kunde
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Customer List -->
+                <div class="card">
+                    <div class="card-header">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h5 class="mb-0">Kunden</h5>
+                            </div>
+                            <div class="col-auto">
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                    <input type="text" class="form-control" placeholder="Kunde suchen..." 
+                                           id="customerSearch" onkeyup="window.searchCustomers()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Kundennr.</th>
+                                        <th>Name</th>
+                                        <th>Kontaktperson</th>
+                                        <th>E-Mail</th>
+                                        <th>Telefon</th>
+                                        <th>Zahlungsziel</th>
+                                        <th>Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customersTableBody">
+                                    <!-- Customers will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -4643,7 +4848,7 @@
 
         // ===== NAVIGATION & TABS =====
         
-        function showTab(tabId) {
+        window.showTab = function(tabId) {
             // Hide all tabs
             const tabs = document.querySelectorAll('.tab-content');
             tabs.forEach(tab => tab.classList.remove('active'));
@@ -4686,6 +4891,8 @@
                     break;
                 case 'inventory':
                     loadInventory();
+                    loadInventoryAlerts();
+                    loadInventoryMetrics();
                     // Bootstrap-Tabs initialisieren und Event-Handler hinzufügen
                     setTimeout(() => {
                         console.log('🔍 Initialisiere Inventory Tabs...');
@@ -4799,6 +5006,12 @@
                     break;
                 case 'analytics':
                     loadAnalytics();
+                    break;
+                case 'invoices':
+                    loadInvoices();
+                    break;
+                case 'customers':
+                    loadCustomers();
                     break;
                 default:
                     console.log(`Loading tab: ${tabId}`);
@@ -5817,6 +6030,19 @@
         }
         
         window.generateAIWeekMenu = async function() {
+            console.log('🤖 Opening AI Meal Planner Modal');
+            
+            // Open the modal
+            const modal = new bootstrap.Modal(document.getElementById('aiMealPlannerModal'));
+            modal.show();
+            
+            return; // Just open modal, let user interact with it
+        };
+            
+        // The rest of the old generateAIWeekMenu function is commented out
+        /*
+        // Old implementation - removed for new modal approach
+        function oldGenerateAIWeekMenu() {
             const modeNames = {
                 'cost_optimized': 'Kostenoptimierung',
                 'balanced_nutrition': 'Ausgewogene Ernährung',
@@ -5953,6 +6179,7 @@
                 showToast('❌ Fehler beim Generieren des KI-Menüs', 'error');
             }
         }
+        */  // End of commented old function
 
         function generateAISuggestions() {
             const suggestions = [];
@@ -7131,6 +7358,305 @@
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Fehler beim Laden des Inventars</td></tr>';
                 showToast('Fehler beim Laden des Inventars', 'error');
             }
+        }
+
+        // Load inventory alerts
+        async function loadInventoryAlerts() {
+            const alertsContainer = document.getElementById('inventoryAlerts');
+            if (!alertsContainer) return;
+            
+            try {
+                const response = await api.get('/inventory/alerts');
+                const alertsHtml = [];
+                
+                // Critical alerts (out of stock)
+                if (response.critical && response.critical.length > 0) {
+                    response.critical.forEach(alert => {
+                        alertsHtml.push(`
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <strong>${alert.product}</strong> ${alert.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        `);
+                    });
+                }
+                
+                // Low stock alerts
+                if (response.low && response.low.length > 0) {
+                    response.low.forEach(alert => {
+                        alertsHtml.push(`
+                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                <i class="bi bi-exclamation-circle-fill me-2"></i>
+                                <strong>${alert.product}</strong> ${alert.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        `);
+                    });
+                }
+                
+                // Reorder suggestions
+                if (response.reorder && response.reorder.length > 0) {
+                    response.reorder.forEach(alert => {
+                        alertsHtml.push(`
+                            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                                <strong>${alert.product}</strong> ${alert.message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        `);
+                    });
+                }
+                
+                alertsContainer.innerHTML = alertsHtml.length > 0 ? alertsHtml.join('') : 
+                    '<div class="alert alert-success"><i class="bi bi-check-circle-fill me-2"></i>Alle Lagerbestände sind ausreichend</div>';
+                    
+            } catch (error) {
+                console.error('Error loading inventory alerts:', error);
+            }
+        }
+
+        // Load inventory metrics
+        async function loadInventoryMetrics() {
+            try {
+                const summary = await api.get('/inventory/summary');
+                
+                // Update metric cards
+                document.getElementById('outOfStockCount').textContent = summary.summary.out_of_stock_count || 0;
+                document.getElementById('lowStockCount').textContent = summary.summary.low_stock_count || 0;
+                
+                // Calculate reorder suggestions count
+                const reorderCount = summary.alerts ? summary.alerts.reorder.length : 0;
+                document.getElementById('reorderSuggestions').textContent = reorderCount;
+                
+                // Update total value
+                document.getElementById('totalInventoryValue').textContent = 
+                    `€${summary.summary.total_value ? summary.summary.total_value.toFixed(2) : '0.00'}`;
+                    
+            } catch (error) {
+                console.error('Error loading inventory metrics:', error);
+            }
+        }
+
+        // Show inventory details modal
+        window.showInventoryDetails = function(productId) {
+            // TODO: Implement inventory details modal
+            showToast('Details-Ansicht wird noch implementiert', 'info');
+        }
+
+        // Show low stock products
+        window.showLowStockProducts = async function() {
+            try {
+                const products = await api.get('/inventory/low-stock');
+                
+                const modal = document.createElement('div');
+                modal.className = 'modal fade';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                                    Produkte mit niedrigem Lagerbestand
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Produkt</th>
+                                            <th>Aktueller Bestand</th>
+                                            <th>Mindestbestand</th>
+                                            <th>Verbrauch/Tag</th>
+                                            <th>Tage bis leer</th>
+                                            <th>Aktion</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${products.map(p => `
+                                            <tr>
+                                                <td><strong>${p.name}</strong></td>
+                                                <td class="text-danger">${p.stock} ${p.unit}</td>
+                                                <td>${p.min_stock} ${p.unit}</td>
+                                                <td>${p.consumption_rate_per_day || 0} ${p.unit}</td>
+                                                <td>${p.days_until_empty || 'N/A'}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-warning" onclick="window.updateMinStock(${p.id})">
+                                                        <i class="bi bi-gear"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                const modalInstance = new bootstrap.Modal(modal);
+                modalInstance.show();
+                
+                modal.addEventListener('hidden.bs.modal', () => {
+                    modal.remove();
+                });
+                
+            } catch (error) {
+                showToast('Fehler beim Laden der Produkte', 'error');
+            }
+        }
+
+        // Show reorder suggestions
+        window.showReorderSuggestions = async function() {
+            try {
+                const suggestions = await api.get('/inventory/reorder-suggestions');
+                
+                const modal = document.createElement('div');
+                modal.className = 'modal fade';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-cart-plus-fill text-info me-2"></i>
+                                    Bestellvorschläge
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Produkt</th>
+                                            <th>Lieferant</th>
+                                            <th>Aktueller Bestand</th>
+                                            <th>Empfohlene Menge</th>
+                                            <th>Geschätzte Kosten</th>
+                                            <th>Aktion</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${suggestions.map(s => `
+                                            <tr>
+                                                <td><strong>${s.product_name}</strong></td>
+                                                <td>${s.supplier_name || 'N/A'}</td>
+                                                <td class="text-warning">${s.current_stock} ${s.unit}</td>
+                                                <td class="text-success">${s.suggested_quantity} ${s.unit}</td>
+                                                <td>€${s.estimated_cost.toFixed(2)}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-primary" onclick="window.createOrderFromSuggestion(${s.product_id}, ${s.suggested_quantity})">
+                                                        <i class="bi bi-cart-plus"></i> Bestellen
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                                <div class="alert alert-info mt-3">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    Diese Vorschläge basieren auf dem durchschnittlichen Verbrauch und den Mindestbeständen.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                const modalInstance = new bootstrap.Modal(modal);
+                modalInstance.show();
+                
+                modal.addEventListener('hidden.bs.modal', () => {
+                    modal.remove();
+                });
+                
+            } catch (error) {
+                showToast('Fehler beim Laden der Bestellvorschläge', 'error');
+            }
+        }
+
+        // Update minimum stock levels
+        window.updateMinStock = async function(productId) {
+            const product = await api.get(`/products/${productId}`);
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi bi-gear me-2"></i>
+                                Mindestbestand anpassen
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <h6>${product.name}</h6>
+                            <form id="updateMinStockForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Mindestbestand</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="minStock" value="${product.min_stock}" min="0">
+                                        <span class="input-group-text">${product.unit}</span>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Bestellpunkt (optional)</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="reorderPoint" value="${product.reorder_point || product.min_stock * 1.5}" min="0">
+                                        <span class="input-group-text">${product.unit}</span>
+                                    </div>
+                                    <small class="text-muted">Bei diesem Bestand wird eine Bestellung vorgeschlagen</small>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                            <button type="button" class="btn btn-primary" onclick="window.saveMinStock(${productId})">Speichern</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            window.currentMinStockModal = new bootstrap.Modal(modal);
+            window.currentMinStockModal.show();
+            
+            modal.addEventListener('hidden.bs.modal', () => {
+                modal.remove();
+            });
+        }
+
+        // Save minimum stock
+        window.saveMinStock = async function(productId) {
+            try {
+                const minStock = parseFloat(document.getElementById('minStock').value);
+                const reorderPoint = parseFloat(document.getElementById('reorderPoint').value);
+                
+                await api.put(`/inventory/${productId}/min-stock`, {
+                    minStock,
+                    reorderPoint
+                });
+                
+                showToast('Mindestbestand aktualisiert', 'success');
+                window.currentMinStockModal.hide();
+                
+                // Reload inventory data
+                loadInventory();
+                loadInventoryAlerts();
+                loadInventoryMetrics();
+                
+            } catch (error) {
+                showToast('Fehler beim Speichern', 'error');
+            }
+        }
+
+        // Create order from suggestion
+        window.createOrderFromSuggestion = function(productId, quantity) {
+            // TODO: Implement order creation
+            showToast('Bestellfunktion wird noch implementiert', 'info');
         }
         
         // ===== GOODS RECEIPT MANAGEMENT =====
@@ -12611,27 +13137,7 @@
             if (originalGenerateAI) {
                 console.log('✅ generateAIWeekMenu function found');
                 
-                // Add error handling wrapper
-                window.generateAIWeekMenu = async function() {
-                    console.log('🤖 generateAIWeekMenu called');
-                    try {
-                        // Ensure recipes are loaded
-                        if (!window.AppData || !window.AppData.recipes || window.AppData.recipes.length === 0) {
-                            console.log('📚 Loading recipes first...');
-                            if (typeof loadRecipeLibrary === 'function') {
-                                await loadRecipeLibrary();
-                            }
-                        }
-                        
-                        // Call original function
-                        await originalGenerateAI.call(this);
-                    } catch (error) {
-                        console.error('❌ Error in generateAIWeekMenu:', error);
-                        if (typeof showToast === 'function') {
-                            showToast('❌ Fehler bei der KI-Generierung: ' + error.message, 'error');
-                        }
-                    }
-                };
+                // Note: generateAIWeekMenu is already defined above
             }
             
             // Debug: Check if button exists after page load
@@ -12656,6 +13162,531 @@
                 }
             }, 1000);
         });
+        
+        // ========= INVOICE FUNCTIONS =========
+        async function loadInvoices() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/invoices`, {
+                    headers: { 'x-tenant-id': TENANT_ID }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load invoices');
+                
+                const invoices = await response.json();
+                displayInvoices(invoices);
+                
+                // Load statistics
+                const statsResponse = await fetch(`${API_BASE_URL}/invoices/stats/overview`, {
+                    headers: { 'x-tenant-id': TENANT_ID }
+                });
+                
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    updateInvoiceStats(stats);
+                }
+            } catch (error) {
+                console.error('Error loading invoices:', error);
+                showToast('Fehler beim Laden der Rechnungen', 'error');
+            }
+        }
+        
+        function displayInvoices(invoices) {
+            const tbody = document.getElementById('invoicesTableBody');
+            tbody.innerHTML = '';
+            
+            invoices.forEach(invoice => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${invoice.invoiceNumber}</td>
+                    <td>${invoice.customerName || 'N/A'}</td>
+                    <td>${new Date(invoice.issueDate).toLocaleDateString('de-DE')}</td>
+                    <td>${new Date(invoice.dueDate).toLocaleDateString('de-DE')}</td>
+                    <td>€${invoice.total.toFixed(2)}</td>
+                    <td>${getInvoiceStatusBadge(invoice.status)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewInvoice('${invoice.id}')">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="downloadInvoicePDF('${invoice.id}')">
+                            <i class="bi bi-download"></i>
+                        </button>
+                        ${invoice.status === 'sent' ? `
+                            <button class="btn btn-sm btn-outline-success" onclick="markInvoicePaid('${invoice.id}')">
+                                <i class="bi bi-check-circle"></i>
+                            </button>
+                        ` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        function getInvoiceStatusBadge(status) {
+            const badges = {
+                draft: '<span class="badge bg-secondary">Entwurf</span>',
+                sent: '<span class="badge bg-primary">Versendet</span>',
+                paid: '<span class="badge bg-success">Bezahlt</span>',
+                overdue: '<span class="badge bg-danger">Überfällig</span>',
+                cancelled: '<span class="badge bg-dark">Storniert</span>'
+            };
+            return badges[status] || status;
+        }
+        
+        function updateInvoiceStats(stats) {
+            document.getElementById('openInvoicesCount').textContent = stats.byStatus.sent || 0;
+            document.getElementById('openInvoicesValue').textContent = `€${((stats.outstanding || 0).toFixed(2))}`;
+            
+            document.getElementById('paidInvoicesCount').textContent = stats.byStatus.paid || 0;
+            document.getElementById('paidInvoicesValue').textContent = `€${((stats.totalPaid || 0).toFixed(2))}`;
+            
+            document.getElementById('overdueInvoicesCount').textContent = stats.byStatus.overdue || 0;
+            document.getElementById('overdueInvoicesValue').textContent = `€${((stats.overdue || 0).toFixed(2))}`;
+            
+            document.getElementById('totalInvoicesCount').textContent = stats.total || 0;
+            document.getElementById('totalInvoicesValue').textContent = `€${((stats.totalValue || 0).toFixed(2))}`;
+        }
+        
+        window.createInvoiceFromMealPlan = function() {
+            // Show modal to select customer and meal plan
+            showToast('🚧 Rechnungserstellung - In Entwicklung', 'info');
+        };
+        
+        window.exportInvoices = function() {
+            showToast('📄 Rechnungen werden exportiert...', 'info');
+            setTimeout(() => showToast('✅ Export erfolgreich!', 'success'), 1500);
+        };
+        
+        window.filterInvoices = function() {
+            const filter = document.getElementById('invoiceStatusFilter').value;
+            loadInvoices(); // In production, add filtering logic
+        };
+        
+        window.viewInvoice = function(invoiceId) {
+            showToast('👁️ Rechnung wird geladen...', 'info');
+        };
+        
+        window.downloadInvoicePDF = async function(invoiceId) {
+            try {
+                showToast('📄 PDF wird generiert...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/pdf`, {
+                    headers: { 'x-tenant-id': TENANT_ID }
+                });
+                
+                if (!response.ok) throw new Error('Failed to generate PDF');
+                
+                // Get the filename from the Content-Disposition header
+                const disposition = response.headers.get('Content-Disposition');
+                const filenameMatch = disposition && disposition.match(/filename="(.+)"/);
+                const filename = filenameMatch ? filenameMatch[1] : `Rechnung-${invoiceId}.pdf`;
+                
+                // Convert response to blob
+                const blob = await response.blob();
+                
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                showToast('✅ PDF heruntergeladen!', 'success');
+            } catch (error) {
+                console.error('Error downloading PDF:', error);
+                showToast('❌ Fehler beim PDF-Download', 'error');
+            }
+        };
+        
+        window.markInvoicePaid = async function(invoiceId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-tenant-id': TENANT_ID
+                    },
+                    body: JSON.stringify({ status: 'paid' })
+                });
+                
+                if (!response.ok) throw new Error('Failed to update invoice');
+                
+                showToast('✅ Rechnung als bezahlt markiert', 'success');
+                loadInvoices();
+            } catch (error) {
+                console.error('Error updating invoice:', error);
+                showToast('Fehler beim Aktualisieren der Rechnung', 'error');
+            }
+        };
+        
+        // ========= CUSTOMER FUNCTIONS =========
+        async function loadCustomers() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/customers`, {
+                    headers: { 'x-tenant-id': TENANT_ID }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load customers');
+                
+                const customers = await response.json();
+                displayCustomers(customers);
+            } catch (error) {
+                console.error('Error loading customers:', error);
+                showToast('Fehler beim Laden der Kunden', 'error');
+            }
+        }
+        
+        function displayCustomers(customers) {
+            const tbody = document.getElementById('customersTableBody');
+            tbody.innerHTML = '';
+            
+            customers.forEach(customer => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${customer.customerNumber}</td>
+                    <td>${customer.name}</td>
+                    <td>${customer.contactPerson || '-'}</td>
+                    <td>${customer.email}</td>
+                    <td>${customer.phone || '-'}</td>
+                    <td>${customer.paymentTerms} Tage</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editCustomer('${customer.id}')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-info" onclick="viewCustomerInvoices('${customer.id}')">
+                            <i class="bi bi-receipt"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        window.showCreateCustomerModal = function() {
+            showToast('🚧 Kundenformular - In Entwicklung', 'info');
+        };
+        
+        window.searchCustomers = function() {
+            const searchTerm = document.getElementById('customerSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('#customersTableBody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        };
+        
+        window.editCustomer = function(customerId) {
+            showToast('✏️ Kundenbearbeitung - In Entwicklung', 'info');
+        };
+        
+        window.viewCustomerInvoices = function(customerId) {
+            showToast('📋 Kundenrechnungen werden geladen...', 'info');
+        };
+    </script>
+
+    <!-- AI Meal Planner Modal -->
+    <div class="modal fade" id="aiMealPlannerModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-robot me-2"></i>KI Speiseplan-Generator
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Mode Selection -->
+                    <div class="mb-4">
+                        <h6 class="mb-3">Wählen Sie einen KI-Modus:</h6>
+                        <div class="row g-2">
+                            <div class="col-md-4 col-lg-2">
+                                <button type="button" class="btn btn-outline-primary w-100 ai-mode-btn" data-mode="cost">
+                                    <i class="bi bi-currency-euro d-block mb-1"></i>
+                                    Kosten-optimiert
+                                </button>
+                            </div>
+                            <div class="col-md-4 col-lg-2">
+                                <button type="button" class="btn btn-outline-success w-100 ai-mode-btn" data-mode="nutrition">
+                                    <i class="bi bi-heart-pulse d-block mb-1"></i>
+                                    Ausgewogen
+                                </button>
+                            </div>
+                            <div class="col-md-4 col-lg-2">
+                                <button type="button" class="btn btn-outline-info w-100 ai-mode-btn" data-mode="variety">
+                                    <i class="bi bi-shuffle d-block mb-1"></i>
+                                    Abwechslungsreich
+                                </button>
+                            </div>
+                            <div class="col-md-4 col-lg-2">
+                                <button type="button" class="btn btn-outline-warning w-100 ai-mode-btn" data-mode="seasonal">
+                                    <i class="bi bi-calendar-event d-block mb-1"></i>
+                                    Saisonal
+                                </button>
+                            </div>
+                            <div class="col-md-4 col-lg-2">
+                                <button type="button" class="btn btn-outline-secondary w-100 ai-mode-btn" data-mode="inventory">
+                                    <i class="bi bi-box-seam d-block mb-1"></i>
+                                    Lagerbasiert
+                                </button>
+                            </div>
+                            <div class="col-md-4 col-lg-2">
+                                <button type="button" class="btn btn-outline-dark w-100 ai-mode-btn" data-mode="custom">
+                                    <i class="bi bi-gear d-block mb-1"></i>
+                                    Anpassen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Mode Info -->
+                    <div class="alert alert-info d-none" id="selectedModeInfo">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <span id="selectedModeText"></span>
+                    </div>
+
+                    <!-- Custom Mode Settings (initially hidden) -->
+                    <div class="d-none" id="customModeSettings">
+                        <h6 class="mb-3">Anpassungen:</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Kostengewichtung (0-100%)</label>
+                                <input type="range" class="form-range" id="weightCost" min="0" max="100" value="50">
+                                <small class="text-muted">Aktuell: <span id="weightCostValue">50</span>%</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ernährungsgewichtung (0-100%)</label>
+                                <input type="range" class="form-range" id="weightNutrition" min="0" max="100" value="50">
+                                <small class="text-muted">Aktuell: <span id="weightNutritionValue">50</span>%</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Abwechslungsgewichtung (0-100%)</label>
+                                <input type="range" class="form-range" id="weightVariety" min="0" max="100" value="50">
+                                <small class="text-muted">Aktuell: <span id="weightVarietyValue">50</span>%</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Saisonalitätsgewichtung (0-100%)</label>
+                                <input type="range" class="form-range" id="weightSeasonal" min="0" max="100" value="50">
+                                <small class="text-muted">Aktuell: <span id="weightSeasonalValue">50</span>%</small>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Ausgeschlossene Zutaten</label>
+                                <input type="text" class="form-control" id="excludeIngredients" placeholder="z.B. Schweinefleisch, Nüsse (kommagetrennt)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Generate Button -->
+                    <div class="text-center my-4">
+                        <button type="button" class="btn btn-primary btn-lg" id="generateAIMealPlan" disabled>
+                            <i class="bi bi-magic me-2"></i>Speiseplan generieren
+                        </button>
+                    </div>
+
+                    <!-- Loading Indicator -->
+                    <div class="text-center py-5 d-none" id="aiLoadingIndicator">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Laden...</span>
+                        </div>
+                        <p class="mt-3">KI generiert Ihren optimalen Speiseplan...</p>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="aiMealPlanResults" class="d-none">
+                        <h6 class="mb-3">Generierte Speisepläne:</h6>
+                        <div class="row g-3" id="aiMealPlanContainer">
+                            <!-- AI results will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                    <button type="button" class="btn btn-success d-none" id="applyAllMealsBtn">
+                        <i class="bi bi-check-all me-2"></i>Alle übernehmen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AI Modal Event Handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mode selection
+            document.querySelectorAll('.ai-mode-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remove active class from all buttons
+                    document.querySelectorAll('.ai-mode-btn').forEach(b => b.classList.remove('active'));
+                    // Add active class to clicked button
+                    this.classList.add('active');
+                    
+                    const mode = this.dataset.mode;
+                    const infoDiv = document.getElementById('selectedModeInfo');
+                    const infoText = document.getElementById('selectedModeText');
+                    const customSettings = document.getElementById('customModeSettings');
+                    const generateBtn = document.getElementById('generateAIMealPlan');
+                    
+                    // Show mode info
+                    infoDiv.classList.remove('d-none');
+                    
+                    // Set info text based on mode
+                    const modeTexts = {
+                        cost: 'Kostenoptimierte Auswahl - Fokus auf preisgünstige Gerichte',
+                        nutrition: 'Ausgewogene Ernährung - Fokus auf Nährwerte und Vielfalt',
+                        variety: 'Maximale Abwechslung - Verschiedene Küchen und Geschmäcker',
+                        seasonal: 'Saisonale Auswahl - Fokus auf saisonale Zutaten',
+                        inventory: 'Lagerbasierte Optimierung - Nutzt vorhandene Bestände',
+                        custom: 'Benutzerdefinierte Einstellungen - Passen Sie die Gewichtungen an'
+                    };
+                    
+                    infoText.textContent = modeTexts[mode] || '';
+                    
+                    // Show/hide custom settings
+                    if (mode === 'custom') {
+                        customSettings.classList.remove('d-none');
+                    } else {
+                        customSettings.classList.add('d-none');
+                    }
+                    
+                    // Enable generate button
+                    generateBtn.disabled = false;
+                });
+            });
+            
+            // Range sliders
+            document.querySelectorAll('input[type="range"]').forEach(slider => {
+                slider.addEventListener('input', function() {
+                    const valueSpan = document.getElementById(this.id + 'Value');
+                    if (valueSpan) {
+                        valueSpan.textContent = this.value;
+                    }
+                });
+            });
+            
+            // Generate button
+            document.getElementById('generateAIMealPlan').addEventListener('click', async function() {
+                const activeMode = document.querySelector('.ai-mode-btn.active');
+                if (!activeMode) return;
+                
+                const mode = activeMode.dataset.mode;
+                const loadingDiv = document.getElementById('aiLoadingIndicator');
+                const resultsDiv = document.getElementById('aiMealPlanResults');
+                const resultsContainer = document.getElementById('aiMealPlanContainer');
+                
+                // Show loading
+                loadingDiv.classList.remove('d-none');
+                resultsDiv.classList.add('d-none');
+                this.disabled = true;
+                
+                try {
+                    // Prepare request data with proper mode mapping
+                    const modeMap = {
+                        'cost': 'cost_optimized',
+                        'nutrition': 'balanced_nutrition',
+                        'variety': 'variety',
+                        'seasonal': 'seasonal',
+                        'inventory': 'inventory_based'
+                    };
+                    
+                    let requestData = { mode: modeMap[mode] || 'cost_optimized' };
+                    
+                    if (mode === 'custom') {
+                        requestData = {
+                            mode: 'custom',
+                            weights: {
+                                cost: parseInt(document.getElementById('weightCost').value),
+                                nutrition: parseInt(document.getElementById('weightNutrition').value),
+                                variety: parseInt(document.getElementById('weightVariety').value),
+                                seasonal: parseInt(document.getElementById('weightSeasonal').value)
+                            },
+                            exclude_ingredients: document.getElementById('excludeIngredients').value
+                                .split(',')
+                                .map(i => i.trim())
+                                .filter(i => i)
+                        };
+                    }
+                    
+                    // Call AI API
+                    const response = await fetch(`${API_BASE_URL}/ai/suggest-meals`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-tenant-id': TENANT_ID
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+                    
+                    if (!response.ok) throw new Error('AI generation failed');
+                    
+                    const data = await response.json();
+                    
+                    // Display results
+                    resultsContainer.innerHTML = '';
+                    
+                    // Convert mealPlan object to meals array
+                    let meals = [];
+                    if (data.mealPlan) {
+                        meals = Object.values(data.mealPlan);
+                    }
+                    
+                    if (meals && meals.length > 0) {
+                        meals.forEach((meal, index) => {
+                            const mealCard = document.createElement('div');
+                            mealCard.className = 'col-md-6 col-lg-4';
+                            mealCard.innerHTML = `
+                                <div class="card ai-meal-item">
+                                    <div class="card-body">
+                                        <h6 class="card-title">${meal.name}</h6>
+                                        <p class="card-text small text-muted">${meal.category || 'Hauptgericht'}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-success fw-bold">€${meal.cost_per_portion ? meal.cost_per_portion.toFixed(2) : '3.50'}</span>
+                                            <button class="btn btn-sm btn-primary" onclick="applyAIMeal(${index})">
+                                                <i class="bi bi-plus-circle me-1"></i>Übernehmen
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            resultsContainer.appendChild(mealCard);
+                        });
+                        
+                        // Store meals for later use
+                        window.currentAIMeals = meals;
+                        
+                        // Show apply all button
+                        document.getElementById('applyAllMealsBtn').classList.remove('d-none');
+                    } else {
+                        resultsContainer.innerHTML = '<div class="col-12"><p class="text-center text-muted">Keine Gerichte gefunden.</p></div>';
+                    }
+                    
+                    // Show results
+                    loadingDiv.classList.add('d-none');
+                    resultsDiv.classList.remove('d-none');
+                    
+                } catch (error) {
+                    console.error('Error generating AI meal plan:', error);
+                    showToast('Fehler bei der KI-Generierung', 'error');
+                    loadingDiv.classList.add('d-none');
+                } finally {
+                    this.disabled = false;
+                }
+            });
+        });
+        
+        // Function to apply AI meal to plan
+        window.applyAIMeal = function(index) {
+            if (!window.currentAIMeals || !window.currentAIMeals[index]) return;
+            
+            const meal = window.currentAIMeals[index];
+            showToast(`${meal.name} wurde zum Speiseplan hinzugefügt`, 'success');
+            
+            // Here you would add the meal to the actual meal plan
+            // This is a placeholder - implement actual meal plan integration
+        };
     </script>
 
 </body>

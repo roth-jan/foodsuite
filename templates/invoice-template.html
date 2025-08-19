@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rechnung {{invoice.invoiceNumber}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #333;
+            background: white;
+        }
+        
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        
+        /* Header */
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #0066cc;
+            padding-bottom: 20px;
+        }
+        
+        .company-info h1 {
+            color: #0066cc;
+            font-size: 28pt;
+            margin-bottom: 10px;
+        }
+        
+        .company-info p {
+            color: #666;
+            font-size: 10pt;
+            line-height: 1.4;
+        }
+        
+        .invoice-meta {
+            text-align: right;
+        }
+        
+        .invoice-meta h2 {
+            color: #333;
+            font-size: 24pt;
+            margin-bottom: 10px;
+        }
+        
+        .invoice-meta p {
+            font-size: 10pt;
+            margin: 5px 0;
+        }
+        
+        .invoice-number {
+            font-weight: bold;
+            color: #0066cc;
+            font-size: 14pt;
+        }
+        
+        /* Addresses */
+        .addresses {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+        
+        .address-box {
+            width: 45%;
+        }
+        
+        .address-box h3 {
+            color: #0066cc;
+            font-size: 11pt;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .address-box p {
+            font-size: 11pt;
+            line-height: 1.6;
+        }
+        
+        /* Invoice Details */
+        .invoice-details {
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .invoice-details p {
+            font-size: 11pt;
+            margin: 5px 0;
+        }
+        
+        /* Items Table */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        
+        .items-table th {
+            background: #0066cc;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 11pt;
+        }
+        
+        .items-table th:last-child,
+        .items-table td:last-child {
+            text-align: right;
+        }
+        
+        .items-table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 11pt;
+        }
+        
+        .items-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        /* Totals */
+        .invoice-totals {
+            float: right;
+            width: 300px;
+            margin-bottom: 40px;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 11pt;
+        }
+        
+        .total-row.subtotal {
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+        
+        .total-row.grand-total {
+            border-top: 2px solid #0066cc;
+            font-weight: bold;
+            font-size: 14pt;
+            color: #0066cc;
+            padding-top: 15px;
+        }
+        
+        /* Footer */
+        .invoice-footer {
+            clear: both;
+            margin-top: 60px;
+            padding-top: 30px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .payment-info {
+            margin-bottom: 20px;
+        }
+        
+        .payment-info h3 {
+            color: #0066cc;
+            font-size: 12pt;
+            margin-bottom: 10px;
+        }
+        
+        .payment-info p {
+            font-size: 10pt;
+            line-height: 1.6;
+        }
+        
+        .footer-note {
+            text-align: center;
+            color: #666;
+            font-size: 9pt;
+            margin-top: 40px;
+        }
+        
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 10pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-badge.paid {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-badge.sent {
+            background: #007bff;
+            color: white;
+        }
+        
+        .status-badge.draft {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .status-badge.overdue {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-container">
+        <!-- Header -->
+        <div class="invoice-header">
+            <div class="company-info">
+                <h1>{{company.name}}</h1>
+                <p>{{company.address}}</p>
+                <p>Tel: {{company.phone}} | E-Mail: {{company.email}}</p>
+                <p>Steuernummer: {{company.taxId}}</p>
+            </div>
+            <div class="invoice-meta">
+                <h2>RECHNUNG</h2>
+                <p class="invoice-number">Nr. {{invoice.invoiceNumber}}</p>
+                <p>Datum: {{formatDate invoice.issueDate}}</p>
+                <p>Fällig: {{formatDate invoice.dueDate}}</p>
+                <span class="status-badge {{invoice.status}}">{{statusText invoice.status}}</span>
+            </div>
+        </div>
+        
+        <!-- Addresses -->
+        <div class="addresses">
+            <div class="address-box">
+                <h3>Von</h3>
+                <p>
+                    <strong>{{company.name}}</strong><br>
+                    {{company.address}}<br>
+                    {{company.zipCode}} {{company.city}}
+                </p>
+            </div>
+            <div class="address-box">
+                <h3>Rechnungsempfänger</h3>
+                <p>
+                    <strong>{{customer.name}}</strong><br>
+                    {{#if customer.contactPerson}}{{customer.contactPerson}}<br>{{/if}}
+                    {{customer.address}}<br>
+                    {{customer.zipCode}} {{customer.city}}
+                </p>
+            </div>
+        </div>
+        
+        <!-- Invoice Details -->
+        {{#if invoice.mealPlanId}}
+        <div class="invoice-details">
+            <p><strong>Leistungszeitraum:</strong> {{formatDate invoice.dateFrom}} - {{formatDate invoice.dateTo}}</p>
+            <p><strong>Ihre Bestellnummer:</strong> {{customer.orderNumber}}</p>
+            <p><strong>Kundennummer:</strong> {{customer.customerNumber}}</p>
+        </div>
+        {{/if}}
+        
+        <!-- Items Table -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 50%">Beschreibung</th>
+                    <th style="width: 15%">Menge</th>
+                    <th style="width: 15%">Einzelpreis</th>
+                    <th style="width: 20%">Gesamt</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each invoice.items}}
+                <tr>
+                    <td>
+                        <strong>{{this.description}}</strong>
+                        {{#if this.details}}<br><small>{{this.details}}</small>{{/if}}
+                    </td>
+                    <td>{{this.quantity}} {{this.unit}}</td>
+                    <td>€ {{formatCurrency this.unitPrice}}</td>
+                    <td>€ {{formatCurrency this.total}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+        
+        <!-- Totals -->
+        <div class="invoice-totals">
+            <div class="total-row subtotal">
+                <span>Zwischensumme:</span>
+                <span>€ {{formatCurrency invoice.subtotal}}</span>
+            </div>
+            <div class="total-row">
+                <span>MwSt. ({{multiply invoice.taxRate 100}}%):</span>
+                <span>€ {{formatCurrency invoice.taxAmount}}</span>
+            </div>
+            <div class="total-row grand-total">
+                <span>Gesamtbetrag:</span>
+                <span>€ {{formatCurrency invoice.total}}</span>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="invoice-footer">
+            <div class="payment-info">
+                <h3>Zahlungsinformationen</h3>
+                <p>
+                    Bitte überweisen Sie den Gesamtbetrag innerhalb von {{customer.paymentTerms}} Tagen auf folgendes Konto:<br>
+                    <strong>{{company.bankName}}</strong><br>
+                    IBAN: {{company.iban}}<br>
+                    BIC: {{company.bic}}<br>
+                    Verwendungszweck: {{invoice.invoiceNumber}}
+                </p>
+            </div>
+            
+            {{#if invoice.notes}}
+            <div class="payment-info">
+                <h3>Hinweise</h3>
+                <p>{{invoice.notes}}</p>
+            </div>
+            {{/if}}
+            
+            <p class="footer-note">
+                Vielen Dank für Ihr Vertrauen!<br>
+                Bei Fragen stehen wir Ihnen gerne zur Verfügung.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

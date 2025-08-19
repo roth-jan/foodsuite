@@ -21,13 +21,15 @@ const inventoryRoutes = require('./routes/inventory');
 const mealPlanRoutes = require('./routes/mealplans');
 const analyticsRoutes = require('./routes/analytics');
 const tenantRoutes = require('./routes/tenants');
+const invoiceRoutes = require('./routes/invoices');
+const customerRoutes = require('./routes/customers');
 
 // Import database
 const dbType = process.env.DB_TYPE || 'memory';
 const db = dbType === 'postgres' ? require('./database/postgres-adapter') : require('./database/db-memory');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3005;
 
 // Security middleware
 app.use(helmet({
@@ -64,9 +66,16 @@ app.use(cors({
         // Allow requests with no origin (like mobile apps or file:// or Postman)
         if (!origin) return callback(null, true);
         
+        // For development: Allow all localhost origins
+        if (process.env.NODE_ENV !== 'production') {
+            if (!origin || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1') || origin.startsWith('file://')) {
+                return callback(null, true);
+            }
+        }
+        
         const allowedOrigins = process.env.NODE_ENV === 'production' ? 
             ['https://yourdomain.com'] : 
-            ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3003', 'http://127.0.0.1:3003', 'http://localhost:8080', 'null'];
+            ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3003', 'http://127.0.0.1:3003', 'http://localhost:3005', 'http://127.0.0.1:3005', 'http://localhost:8080', 'null'];
             
         if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('file://')) {
             callback(null, true);
@@ -108,8 +117,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve the HTML file
+// Serve the HTML file with no-cache headers
 app.get('/', (req, res) => {
+    res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    });
     res.sendFile(path.join(__dirname, 'foodsuite-complete-app.html'));
 });
 
@@ -146,6 +160,8 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/price-monitoring', require('./routes/price-monitoring'));
 app.use('/api/goods-receipts', require('./routes/goods-receipts'));
+app.use('/api/invoices', invoiceRoutes);
+app.use('/api/customers', customerRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
