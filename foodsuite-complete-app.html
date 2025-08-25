@@ -9856,10 +9856,10 @@
 
         // ===== API CLIENT =====
         
-        // Force HTTP for AWS EC2 deployment
+        // Auto-detect protocol for deployment
         const API_BASE_URL = window.location.protocol === 'file:' 
             ? 'http://18.195.206.72:3005/api'  // For local file access
-            : window.location.origin.replace('https:', 'http:') + '/api';  // Force HTTP
+            : window.location.origin + '/api';  // Use same protocol as page
         console.log('API_BASE_URL configured as:', API_BASE_URL);
         const TENANT_ID = 'demo';
         
