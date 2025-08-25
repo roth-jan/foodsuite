@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth-middleware');
+// const { authenticate } = require('../middleware/auth-middleware');
 const { v4: uuidv4 } = require('uuid');
 
-// Apply authentication to all customer routes
-router.use(authenticate);
+// Note: Authentication temporarily disabled for demo
+// router.use(authenticate);
 
 // Get all customers
 router.get('/', async (req, res) => {

@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth-middleware');
+// const { authenticate } = require('../middleware/auth-middleware');
 const { v4: uuidv4 } = require('uuid');
 const { getPDFGenerator } = require('../utils/pdf-generator');
 
-// Apply authentication to all invoice routes
-router.use(authenticate);
+// Note: Authentication temporarily disabled for demo
+// router.use(authenticate);
 
 // Get all invoices
 router.get('/', async (req, res) => {
