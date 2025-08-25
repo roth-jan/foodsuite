@@ -1,14 +1,13 @@
 services:
   - type: web
-    name: foodsuite
-    env: node
-    plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    name: foodsuite-minimal
+    runtime: node
+    buildCommand: npm install --production
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: DB_TYPE
         value: memory
-      - key: DEFAULT_TENANT_ID
-        value: demo
+      - key: PORT
+        value: 10000
