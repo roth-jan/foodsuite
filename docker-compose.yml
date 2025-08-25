@@ -1,0 +1,37 @@
+services:
+  foodsuite-app:
+    build: .
+    ports:
+      - "3003:3005"
+    environment:
+      - NODE_ENV=production
+      - PORT=3005
+      - DB_TYPE=memory
+    volumes:
+      - ./foodsuite-complete-app.html:/usr/src/app/foodsuite-complete-app.html
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3005/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: PostgreSQL für persistente Daten  
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=foodsuite
+      - POSTGRES_USER=foodsuite
+      - POSTGRES_PASSWORD=foodsuite123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema-postgres.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    profiles:
+      - with-postgres
+
+volumes:
+  postgres_data:

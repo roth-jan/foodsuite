@@ -10,7 +10,71 @@ class PostgresAdapter {
         if (!this.initialized) {
             await db.testConnection();
             await db.createTables();
+            
+            // Check if we need to seed data
+            const productCount = await db.query('SELECT COUNT(*) FROM products');
+            if (parseInt(productCount.rows[0].count) === 0) {
+                console.log('🌱 Seeding database with test data...');
+                await this.seedDatabase();
+            }
+            
             this.initialized = true;
+        }
+    }
+    
+    async seedDatabase() {
+        const canteenTestData = require('./canteen-test-data');
+        const articleSystem = require('./article-system');
+        const supplierArticles = require('./supplier-articles-data');
+        
+        try {
+            // Initialize neutral and supplier articles first
+            console.log('📦 Initializing article system...');
+            const neutralArticles = supplierArticles.getNeutralArticles();
+            const supplierArticlesList = supplierArticles.getSupplierArticles();
+            
+            // Seed tenants
+            await db.query('INSERT INTO tenants (id, name) VALUES ($1, $2) ON CONFLICT (id) DO NOTHING', [1, 'Demo Tenant']);
+            
+            // Seed suppliers
+            const suppliers = canteenTestData.suppliers;
+            for (const supplier of suppliers) {
+                await db.query(`
+                    INSERT INTO suppliers (id, tenant_id, name, type, contact_person, email, phone, address, products_count, rating, status)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    ON CONFLICT (id) DO NOTHING
+                `, [supplier.id, supplier.tenant_id, supplier.name, supplier.type, supplier.contact_person, 
+                    supplier.email, supplier.phone, supplier.address, supplier.products_count, supplier.rating, supplier.status]);
+            }
+            
+            // Seed products
+            const products = canteenTestData.products;
+            for (const product of products) {
+                await db.query(`
+                    INSERT INTO products (id, tenant_id, name, category, unit, price, stock, min_stock, max_stock, supplier_id, storage_location)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                    ON CONFLICT (id) DO NOTHING
+                `, [product.id, product.tenant_id, product.name, product.category, product.unit, 
+                    product.price, product.stock, product.min_stock, product.max_stock, product.supplier_id, product.storage_location]);
+            }
+            
+            // Seed recipes
+            const recipes = canteenTestData.recipes;
+            for (const recipe of recipes) {
+                await db.query(`
+                    INSERT INTO recipes (id, tenant_id, name, category, portions, prep_time, cook_time, cost_per_portion, tags, allergens, is_active, instructions)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    ON CONFLICT (id) DO NOTHING
+                `, [recipe.id, recipe.tenant_id, recipe.name, recipe.category, recipe.portions, 
+                    recipe.prep_time, recipe.cook_time, recipe.cost_per_portion, recipe.tags, recipe.allergens, recipe.is_active, recipe.instructions || '']);
+            }
+            
+            console.log('✅ Database seeded successfully');
+            console.log(`📊 Loaded: ${products.length} products, ${recipes.length} recipes, ${suppliers.length} suppliers`);
+            
+        } catch (error) {
+            console.error('❌ Error seeding database:', error);
+            throw error;
         }
     }
     

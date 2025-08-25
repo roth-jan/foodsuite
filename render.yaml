@@ -5,12 +5,12 @@ services:
     plan: free
     buildCommand: npm install
     startCommand: node server.js
-    healthCheckPath: /health
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: DB_TYPE
-        value: memory
+        value: postgres
       - key: PORT
         value: 3000
       - key: JWT_SECRET
@@ -19,3 +19,14 @@ services:
         value: demo
       - key: NODE_OPTIONS
         value: --max-old-space-size=512
+      - key: DATABASE_URL
+        fromDatabase:
+          name: foodsuite-db
+          property: connectionString
+
+  - type: pserv
+    name: foodsuite-db
+    plan: free
+    databaseName: foodsuite
+    user: foodsuite
+    ipAllowList: []
