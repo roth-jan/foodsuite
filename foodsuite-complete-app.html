@@ -12125,6 +12125,52 @@
                     showToast('📊 Preisvergleich läuft...', 'info');
                     setTimeout(() => showToast('✅ Preisvergleich abgeschlossen!', 'success'), 2000);
                 }
+                
+                // Handle modal buttons in Wareneingang
+                if (e.target.textContent === 'Aus bestehender Bestellung') {
+                    e.preventDefault();
+                    console.log('📋 From existing order selected');
+                    const modal = e.target.closest('.modal');
+                    if (modal && modal.querySelector('.modal-body')) {
+                        modal.querySelector('.modal-body').innerHTML = `
+                            <h6>📋 Bestellung auswählen:</h6>
+                            <select class="form-select mb-3">
+                                <option>Bestellung #1001 - METRO AG (€1.250,00)</option>
+                                <option>Bestellung #1002 - Metzgerei Wagner (€890,75)</option>
+                                <option>Bestellung #1003 - Transgourmet (€2.100,25)</option>
+                            </select>
+                            <button class="btn btn-success" onclick="showToast('✅ Wareneingang aus Bestellung erstellt!', 'success')">
+                                Wareneingang erstellen
+                            </button>
+                        `;
+                    }
+                }
+                
+                if (e.target.textContent === 'Manueller Wareneingang') {
+                    e.preventDefault();
+                    console.log('✏️ Manual receipt selected');
+                    const modal = e.target.closest('.modal');
+                    if (modal && modal.querySelector('.modal-body')) {
+                        modal.querySelector('.modal-body').innerHTML = `
+                            <h6>✏️ Manueller Wareneingang:</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Lieferant</label>
+                                <input type="text" class="form-control" placeholder="Lieferant eingeben">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Artikel</label>
+                                <input type="text" class="form-control" placeholder="Artikel eingeben">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Menge</label>
+                                <input type="number" class="form-control" placeholder="Anzahl">
+                            </div>
+                            <button class="btn btn-success" onclick="showToast('✅ Manueller Wareneingang gebucht!', 'success')">
+                                Wareneingang buchen
+                            </button>
+                        `;
+                    }
+                }
             });
             
             // Setup search/filter with delay to ensure DOM is ready
