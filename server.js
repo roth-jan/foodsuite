@@ -77,7 +77,9 @@ app.use(cors({
             ['https://foodsuite-3.onrender.com', 'https://*.onrender.com'] : 
             ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3003', 'http://127.0.0.1:3003', 'http://localhost:3005', 'http://127.0.0.1:3005', 'http://localhost:8080', 'null'];
             
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('file://')) {
+        if (allowedOrigins.indexOf(origin) !== -1 || 
+            origin.startsWith('file://') || 
+            origin.includes('.onrender.com')) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
