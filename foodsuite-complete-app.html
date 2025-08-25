@@ -6029,14 +6029,83 @@
             }
         }
         
+        // Helper functions for AI meal planning
+        function getCurrentAIMode() {
+            const activeButton = document.querySelector('.ai-button.active');
+            if (activeButton) {
+                return activeButton.dataset.mode || 'cost_optimized';
+            }
+            return 'cost_optimized';
+        }
+        
+        function clearMealPlan() {
+            // Clear all meal plan cells
+            const cells = document.querySelectorAll('.meal-plan-cell');
+            cells.forEach(cell => {
+                cell.innerHTML = '<span class="text-muted">Gericht hier ablegen</span>';
+                cell.classList.remove('has-meal');
+            });
+        }
+        
         window.generateAIWeekMenu = async function() {
-            console.log('🤖 Opening AI Meal Planner Modal');
+            console.log('🤖 Starting AI Meal Planning...');
             
-            // Open the modal
-            const modal = new bootstrap.Modal(document.getElementById('aiMealPlannerModal'));
-            modal.show();
+            const currentMode = getCurrentAIMode();
+            console.log('🎯 Using AI mode:', currentMode);
             
-            return; // Just open modal, let user interact with it
+            try {
+                showToast('🤖 Generiere KI-Speiseplan...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/ai/suggest-meals`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-tenant-id': TENANT_ID
+                    },
+                    body: JSON.stringify({
+                        mode: currentMode,
+                        days: 7
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`AI API error: ${response.status}`);
+                }
+                
+                const aiPlan = await response.json();
+                console.log('✅ AI Plan received:', aiPlan);
+                
+                if (aiPlan.success && aiPlan.mealPlan) {
+                    // Clear current plan
+                    clearMealPlan();
+                    
+                    // Apply AI meals to calendar
+                    for (const [key, meal] of Object.entries(aiPlan.mealPlan)) {
+                        const [day, mealType] = key.split('-');
+                        const cellId = `${day}-${mealType}`;
+                        const cell = document.getElementById(cellId);
+                        
+                        if (cell && meal) {
+                            cell.innerHTML = `
+                                <div class="meal-item" data-recipe-id="${meal.id}">
+                                    <strong>${meal.name}</strong><br>
+                                    <small>${meal.portions} Portionen</small><br>
+                                    <small>€${meal.cost_per_portion}/Portion</small>
+                                </div>
+                            `;
+                            cell.classList.add('has-meal');
+                        }
+                    }
+                    
+                    showToast(`✅ ${aiPlan.message || 'KI-Plan erfolgreich erstellt!'}`, 'success');
+                } else {
+                    throw new Error('Invalid AI response format');
+                }
+                
+            } catch (error) {
+                console.error('❌ AI Generation Error:', error);
+                showToast('❌ Fehler bei der KI-Generierung: ' + error.message, 'error');
+            }
         };
             
         // The rest of the old generateAIWeekMenu function is commented out
@@ -9787,8 +9856,10 @@
 
         // ===== API CLIENT =====
         
-        // Dynamic API URL - works for Railway HTTPS and local HTTP
-        const API_BASE_URL = window.location.origin + '/api';
+        // Force HTTP for AWS EC2 deployment
+        const API_BASE_URL = window.location.protocol === 'file:' 
+            ? 'http://18.195.206.72:3005/api'  // For local file access
+            : window.location.origin.replace('https:', 'http:') + '/api';  // Force HTTP
         console.log('API_BASE_URL configured as:', API_BASE_URL);
         const TENANT_ID = 'demo';
         
