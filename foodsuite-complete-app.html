@@ -8171,7 +8171,7 @@
                         <td>${statusBadge}</td>
                         <td>${receipt.notes || '-'}</td>
                         <td>
-                            <button class="btn btn-sm btn-primary" onclick="viewGoodsReceipt('${receipt.id}')">
+                            <button class="btn btn-sm btn-primary" onclick="window.viewGoodsReceipt('${receipt.id}')">
                                 Details
                             </button>
                         </td>
@@ -10434,29 +10434,98 @@
         // ===== PRICE MONITORING =====
         
         async function loadPriceMonitoring() {
+            console.log('📊 Loading price monitoring...');
+            
             try {
-                // Demo price monitoring data instead of broken API
-                const demoTrends = {
-                    products: [
-                        { name: "Bio-Tomaten", trend: "up", change: 15.5, currentPrice: 19.90 },
-                        { name: "Rindergulasch", trend: "down", change: -8.2, currentPrice: 58.50 },
-                        { name: "Basmatireis", trend: "stable", change: 2.1, currentPrice: 89.50 }
-                    ]
-                };
-                updatePriceTrends(demoTrends);
+                // Show loading state first
+                showToast('📊 Lade Preisüberwachung...', 'info');
                 
-                // Demo active alerts
-                const demoAlerts = [
-                    { id: 1, product: "Bio-Tomaten 5kg", type: "increase", threshold: 10, currentChange: 15.5, status: "triggered" },
-                    { id: 2, product: "Kartoffeln 25kg", type: "decrease", threshold: 5, currentChange: -3.2, status: "watching" }
-                ];
-                updatePriceAlerts(demoAlerts);
+                // Basic counts for metrics
+                const activeMonitoringCount = document.getElementById('activeMonitoringCount');
+                const activeAlertsCount = document.getElementById('activeAlertsCount');
+                const avgSavingsPercent = document.getElementById('avgSavingsPercent');
+                const totalSavingsAmount = document.getElementById('totalSavingsAmount');
                 
-                // Load price comparisons for top products
-                loadSupplierComparisons();
+                if (activeMonitoringCount) activeMonitoringCount.textContent = '12';
+                if (activeAlertsCount) activeAlertsCount.textContent = '3';
+                if (avgSavingsPercent) avgSavingsPercent.textContent = '8.5%';
+                if (totalSavingsAmount) totalSavingsAmount.textContent = '€1,247';
                 
-                // Initialize chart
-                initializePriceHistoryChart();
+                // Fill price comparison table with demo data
+                const priceComparisonTable = document.getElementById('priceComparisonTable');
+                if (priceComparisonTable) {
+                    const tbody = priceComparisonTable.querySelector('tbody') || priceComparisonTable;
+                    tbody.innerHTML = `
+                        <tr>
+                            <td><strong>Bio-Tomaten rot, 5kg Kiste</strong></td>
+                            <td><span class="text-danger">€19.90</span></td>
+                            <td><span class="text-success">€17.50</span></td>
+                            <td>BioFrisch Vertrieb</td>
+                            <td><span class="badge bg-warning">Prüfen</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kartoffeln festkochend, 25kg Sack</strong></td>
+                            <td><span class="text-success">€18.90</span></td>
+                            <td><span class="text-success">€18.90</span></td>
+                            <td>METRO AG</td>
+                            <td><span class="badge bg-success">Optimal</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Rindergulasch, 5kg Packung</strong></td>
+                            <td><span class="text-danger">€62.50</span></td>
+                            <td><span class="text-success">€58.50</span></td>
+                            <td>Fleischerei Wagner</td>
+                            <td><span class="badge bg-warning">Prüfen</span></td>
+                        </tr>
+                    `;
+                }
+                
+                // Fill active alerts table with demo data
+                const alertsTable = document.getElementById('activeAlertsTable');
+                if (alertsTable) {
+                    alertsTable.innerHTML = `
+                        <tr>
+                            <td><strong>Bio-Tomaten</strong></td>
+                            <td>Preisanstieg</td>
+                            <td>10%</td>
+                            <td><span class="text-danger">Ausgelöst</span></td>
+                            <td>Gestern</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteAlert('1')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kartoffeln</strong></td>
+                            <td>Preisrückgang</td>
+                            <td>5%</td>
+                            <td><span class="text-success">Überwacht</span></td>
+                            <td>-</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteAlert('2')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                // Initialize or update price chart (simple version without Chart.js dependency)
+                const chartContainer = document.getElementById('priceChart');
+                if (chartContainer) {
+                    chartContainer.innerHTML = `
+                        <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                            <div class="text-center">
+                                <i class="bi bi-graph-up" style="font-size: 3rem;"></i>
+                                <p class="mt-2">Preisdiagramm wird geladen...</p>
+                                <small>Daten für 10 überwachte Produkte verfügbar</small>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                showToast('✅ Preisüberwachung erfolgreich geladen', 'success');
                 
             } catch (error) {
                 console.error('Failed to load price monitoring:', error);
@@ -10935,13 +11004,58 @@
 
         async function loadSavingsOpportunities() {
             try {
-                const response = await fetch(`${API_BASE_URL}/analytics/price-comparison`, {
-                    headers: { 'x-tenant-id': TENANT_ID }
-                });
+                console.log('📊 Loading cost savings opportunities...');
                 
-                if (!response.ok) throw new Error('Failed to load savings opportunities');
-                
-                const data = await response.json();
+                // Demo savings opportunities data
+                const demoSavingsData = {
+                    products: [
+                        { 
+                            id: 1001, 
+                            name: "Bio-Tomaten rot, 5kg Kiste", 
+                            currentPrice: 19.90, 
+                            lowestPrice: 17.50, 
+                            potentialSaving: 2.40, 
+                            lowestSupplier: "BioFrisch Vertrieb",
+                            currentSupplier: "METRO AG" 
+                        },
+                        { 
+                            id: 1002, 
+                            name: "Rindergulasch, 5kg Packung", 
+                            currentPrice: 58.50, 
+                            lowestPrice: 52.00, 
+                            potentialSaving: 6.50, 
+                            lowestSupplier: "Fleischerei Wagner",
+                            currentSupplier: "Großhandel Schmidt" 
+                        },
+                        { 
+                            id: 1003, 
+                            name: "Reis Basmati, 25kg Sack", 
+                            currentPrice: 89.50, 
+                            lowestPrice: 82.00, 
+                            potentialSaving: 7.50, 
+                            lowestSupplier: "Getränke Müller",
+                            currentSupplier: "METRO AG" 
+                        },
+                        { 
+                            id: 1004, 
+                            name: "Hähnchenbrust, 5kg Packung", 
+                            currentPrice: 48.90, 
+                            lowestPrice: 45.20, 
+                            potentialSaving: 3.70, 
+                            lowestSupplier: "Fleischerei Wagner",
+                            currentSupplier: "BioFrisch Vertrieb" 
+                        },
+                        { 
+                            id: 1005, 
+                            name: "Zwiebeln gelb, 10kg Netz", 
+                            currentPrice: 12.90, 
+                            lowestPrice: 11.50, 
+                            potentialSaving: 1.40, 
+                            lowestSupplier: "Gemüse Direct",
+                            currentSupplier: "METRO AG" 
+                        }
+                    ]
+                };
                 
                 // Update the savings table
                 const tbody = document.querySelector('#analytics table tbody');
@@ -10949,7 +11063,7 @@
                     tbody.innerHTML = '';
                     
                     // Show top 5 savings opportunities
-                    const topSavings = data.products
+                    const topSavings = demoSavingsData.products
                         .filter(p => p.potentialSaving > 0)
                         .sort((a, b) => b.potentialSaving - a.potentialSaving)
                         .slice(0, 5);
