@@ -10696,10 +10696,13 @@
         }
         
         function updatePriceAlerts(alerts) {
-            document.getElementById('activeAlertsCount').textContent = alerts.filter(a => a.active).length;
-            
+            // Don't override the table if it's already populated by loadPriceMonitoring
             const alertsTable = document.getElementById('priceAlertsTable');
-            alertsTable.innerHTML = '';
+            if (!alertsTable || alertsTable.innerHTML.trim() !== '') {
+                return; // Table already has content from loadPriceMonitoring
+            }
+            
+            document.getElementById('activeAlertsCount').textContent = alerts.filter(a => a.active).length;
             
             alerts.forEach(alert => {
                 const statusClass = alert.triggered > 0 ? 'text-danger' : 'text-success';
@@ -12972,7 +12975,9 @@
                 // Generic fallback for buttons without specific handlers
                 if (e.target.tagName === 'BUTTON' && !e.target.onclick && !e.target.dataset.action) {
                     const buttonText = e.target.textContent.trim();
-                    if (buttonText && buttonText.length > 2) {
+                    // Skip buttons that should not show preparation messages
+                    const skipButtons = ['Wareneingang', 'Schließen', 'Abbrechen', 'Details', 'Bearbeiten', 'Speichern'];
+                    if (buttonText && buttonText.length > 2 && !skipButtons.includes(buttonText)) {
                         console.log('🔍 Unhandled button clicked:', buttonText);
                         showToast(`ℹ️ "${buttonText}" - Funktion wird vorbereitet...`, 'info');
                     }
