@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # FoodSuite - Professional Kitchen Management System
 
 ## Project Overview
-FoodSuite is a multi-tenant SaaS for professional kitchen management. Single-page HTML frontend + Node.js/Express backend on port 3003.
+FoodSuite is a multi-tenant SaaS for professional kitchen management. Single-page HTML frontend + Node.js/Express backend on port 3005.
 
 ## Essential Commands
 
@@ -102,13 +102,18 @@ Server accepts `null` and `file://` origins - ensure server is running
 
 Core endpoints with Joi validation:
 - `/api/products` - Legacy product management
-- `/api/recipes` - Recipe CRUD with article references
+- `/api/recipes` - Recipe CRUD with article references  
 - `/api/recipes/:id/ingredients` - Update ingredients with articles
 - `/api/ai/suggest-meals` - POST with mode, returns 21 meals
 - `/api/inventory` - Stock tracking with status calculations
-- `/api/goods-receipts` - Warehouse receiving
+- `/api/inventory/alerts` - Inventory warnings (critical/low/reorder)
+- `/api/inventory/low-stock` - Products below minimum stock
+- `/api/goods-receipts` - Warehouse receiving (GET/POST/GET :id/items)
+- `/api/automation-settings` - GET/PUT automation configuration + business recommendations
 - `/api/suppliers` - Supplier management
 - `/api/users` + `/api/auth` - JWT authentication
+- `/api/price-monitoring` - Price alerts and monitoring
+- `/api/invoices` + `/api/customers` - Basic CRUD (Phase 2: full implementation)
 
 ## Deployment
 
@@ -120,13 +125,13 @@ Core endpoints with Joi validation:
 
 ### Local Testing Flow
 1. `node server.js`
-2. Open http://localhost:3003
+2. Open http://localhost:3005  
 3. Login: admin/Demo123!
 4. Test KI: Click "KI-Plan erstellen" in Speiseplanung
 
-## Recent Critical Changes (July 2025)
+## Recent Critical Changes (August 2025)
 
-1. **Article System Implementation**
+1. **Article System Implementation** 
    - Recipes must reference supplier/neutral articles
    - Migration system converts old recipes
    - Frontend shows real nutrition/allergen data
@@ -136,10 +141,17 @@ Core endpoints with Joi validation:
    - Event handlers use `data-action` + `data-param`
    - Fixed button functionality issues
 
-3. **AI Integration**
-   - Frontend mode mapping corrected
-   - Better error logging
-   - API returns full week plan (21 meals)
+3. **Production UX Improvements**
+   - Fixed undefined product names in inventory warnings
+   - Implemented comprehensive goods receipt details modals
+   - Added manual goods receipt functionality with validation
+   - Fixed layout issues in Faktura modules
+   - Added automation-settings API to prevent 404 errors
+
+4. **Generic Button Handler**
+   - Central click handler with smart fallbacks
+   - Skip-list for standard UI buttons to prevent misleading messages
+   - Proper Phase 2 feature marking
 
 ## Testing Approach
 
@@ -151,3 +163,32 @@ npx playwright test               # Browser automation
 ```
 
 Windows users: Use provided `.bat` scripts for common operations.
+
+## Critical Development Notes
+
+### Frontend Event Handling
+- **Global Functions**: All interactive functions must be in `window.*` scope for onclick handlers
+- **Generic Button Handler**: Central click handler in `foodsuite-complete-app.html` handles fallbacks
+- **Skip List**: Standard UI buttons (`['Wareneingang', 'Schließen', 'Abbrechen', 'Details', 'Bearbeiten', 'Speichern']`) bypass generic handler
+
+### Modal System
+- All modals use Bootstrap 5 with dynamic creation via `document.createElement('div')`
+- Pattern: Create → Append → `new bootstrap.Modal()` → Show → Remove on hide
+- Always include proper cleanup: `modal.addEventListener('hidden.bs.modal', () => document.body.removeChild(modal))`
+
+### Data Loading Pattern
+- Demo data loading functions (e.g., `loadPriceMonitoring()`, `loadAnalytics()`) use direct DOM manipulation
+- No external chart libraries - simple HTML/CSS fallbacks for charts
+- API calls with tenant validation: `headers: { 'x-tenant-id': TENANT_ID }`
+
+### Phase 2 Features
+Features marked with `🚧 PHASE 2:` in toast messages:
+- Invoice creation and PDF generation (`/api/invoices/:id/pdf`)
+- Customer creation and editing forms
+- Advanced price monitoring automation
+- Full goods receipt item tracking
+
+### Authentication Notes
+- Most API routes have auth disabled for demo (`// const { authenticate } = require('../middleware/auth-middleware');`)
+- Routes that still require auth: goods receipt POST (legacy)
+- Frontend uses session-based auth, not JWT for most operations
