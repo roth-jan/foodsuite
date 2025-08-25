@@ -12293,26 +12293,51 @@
                 }
             });
             
-            // Setup search/filter with delay to ensure DOM is ready
-            setTimeout(() => {
+            // Robust cross-browser event handling with multiple attachment methods
+            function attachSearchHandlers() {
+                // Method 1: Direct addEventListener (modern browsers)
                 const productSearchInput = document.getElementById('productSearchInput');
                 if (productSearchInput) {
                     productSearchInput.addEventListener('input', (e) => {
-                        console.log('🔍 Search triggered:', e.target.value);
+                        console.log('🔍 Search triggered (addEventListener):', e.target.value);
                         filterProducts(e.target.value);
                     });
-                    console.log('✅ Product search listener attached');
+                    
+                    // Method 2: Fallback oninput (broader compatibility)
+                    productSearchInput.oninput = function(e) {
+                        console.log('🔍 Search triggered (oninput):', e.target.value);
+                        filterProducts(e.target.value);
+                    };
+                    
+                    // Method 3: Fallback onkeyup (maximum compatibility)
+                    productSearchInput.onkeyup = function(e) {
+                        console.log('🔍 Search triggered (onkeyup):', e.target.value);
+                        filterProducts(e.target.value);
+                    };
+                    
+                    console.log('✅ Product search listeners attached (3 methods)');
                 }
                 
                 const categoryFilter = document.getElementById('productCategoryFilter');
                 if (categoryFilter) {
                     categoryFilter.addEventListener('change', (e) => {
-                        console.log('📂 Category filter triggered:', e.target.value);
+                        console.log('📂 Category filter triggered (addEventListener):', e.target.value);
                         filterByCategory(e.target.value);
                     });
-                    console.log('✅ Category filter listener attached');
+                    
+                    categoryFilter.onchange = function(e) {
+                        console.log('📂 Category filter triggered (onchange):', e.target.value);
+                        filterByCategory(e.target.value);
+                    };
+                    
+                    console.log('✅ Category filter listeners attached (2 methods)');
                 }
-            }, 2000);
+            }
+            
+            // Try multiple times with increasing delays for maximum compatibility
+            setTimeout(attachSearchHandlers, 1000);
+            setTimeout(attachSearchHandlers, 3000);
+            setTimeout(attachSearchHandlers, 5000);
             
             // Preload all critical data for immediate use  
             setTimeout(() => {
