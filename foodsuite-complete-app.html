@@ -6039,11 +6039,11 @@
         }
         
         function clearMealPlan() {
-            // Clear all meal plan cells
-            const cells = document.querySelectorAll('.meal-plan-cell');
-            cells.forEach(cell => {
-                cell.innerHTML = '<span class="text-muted">Gericht hier ablegen</span>';
-                cell.classList.remove('has-meal');
+            // Clear all meal plan cells with correct selectors
+            const filledCells = document.querySelectorAll('.calendar-cell-filled');
+            filledCells.forEach(cell => {
+                cell.innerHTML = '<span class="text-muted">Rezept hier ablegen</span>';
+                cell.className = 'calendar-cell-empty';
             });
         }
         
@@ -6076,26 +6076,29 @@
                 console.log('✅ AI Plan received:', aiPlan);
                 
                 if (aiPlan.success && aiPlan.mealPlan) {
-                    // Clear current plan
-                    clearMealPlan();
+                    // Fill calendar with correct selectors
+                    const mealSlots = document.querySelectorAll('.calendar-cell.meal-slot');
+                    console.log('Found meal slots:', mealSlots.length);
                     
-                    // Apply AI meals to calendar
-                    for (const [key, meal] of Object.entries(aiPlan.mealPlan)) {
-                        const [day, mealType] = key.split('-');
-                        const cellId = `${day}-${mealType}`;
-                        const cell = document.getElementById(cellId);
-                        
-                        if (cell && meal) {
-                            cell.innerHTML = `
-                                <div class="meal-item" data-recipe-id="${meal.id}">
-                                    <strong>${meal.name}</strong><br>
-                                    <small>${meal.portions} Portionen</small><br>
-                                    <small>€${meal.cost_per_portion}/Portion</small>
-                                </div>
-                            `;
-                            cell.classList.add('has-meal');
+                    let mealIndex = 0;
+                    const meals = Object.values(aiPlan.mealPlan);
+                    
+                    mealSlots.forEach((slot, index) => {
+                        if (meals[index]) {
+                            const meal = meals[index];
+                            const emptyDiv = slot.querySelector('.calendar-cell-empty');
+                            if (emptyDiv) {
+                                emptyDiv.innerHTML = `
+                                    <div class="meal-item" data-recipe-id="${meal.id}">
+                                        <strong>${meal.name}</strong><br>
+                                        <small>${meal.portions} Portionen</small><br>
+                                        <small>€${meal.cost_per_portion}/Portion</small>
+                                    </div>
+                                `;
+                                emptyDiv.className = 'calendar-cell-filled';
+                            }
                         }
-                    }
+                    });
                     
                     showToast(`✅ ${aiPlan.message || 'KI-Plan erfolgreich erstellt!'}`, 'success');
                 } else {
