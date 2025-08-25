@@ -822,6 +822,48 @@
                 font-size: 10px;
             }
             
+            /* Enhanced mobile UX */
+            .table-responsive {
+                font-size: 0.875rem;
+            }
+            
+            .btn-group .btn {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.875rem;
+            }
+            
+            /* Mobile navigation improvements */
+            .navbar-nav .dropdown-menu {
+                position: static !important;
+                box-shadow: none;
+                border: none;
+                background: rgba(255,255,255,0.95);
+                backdrop-filter: blur(10px);
+            }
+            
+            /* Action buttons stack vertically on mobile */
+            .table-actions {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 5px !important;
+            }
+            
+            .table-actions .btn {
+                width: 100% !important;
+                justify-content: center !important;
+            }
+            
+            /* Cards for key metrics on mobile */
+            .dashboard-card {
+                margin-bottom: 15px;
+            }
+            
+            /* Improved modal sizing */
+            .modal-dialog {
+                margin: 10px;
+                max-width: calc(100% - 20px);
+            }
+            
             .meal-label i {
                 font-size: 14px;
             }
@@ -9909,6 +9951,34 @@
             } catch (error) {
                 console.error('Failed to load price monitoring:', error);
                 showToast('❌ Fehler beim Laden der Preisüberwachung', 'error');
+                
+                // Show helpful placeholder for price monitoring
+                const container = document.querySelector('#price-monitoring') || document.querySelector('.tab-content');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="bi bi-graph-up text-muted" style="font-size: 4rem;"></i>
+                            <h4 class="text-muted mt-3">Preisüberwachung</h4>
+                            <p class="text-muted">Die Preismonitoring-Daten konnten nicht geladen werden.</p>
+                            <div class="row justify-content-center mt-4">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-body text-center">
+                                            <h6>📊 Preisüberwachung</h6>
+                                            <p class="small">Verfolgen Sie Preisentwicklungen Ihrer Lieferanten in Echtzeit.</p>
+                                            <button class="btn btn-primary" onclick="loadPriceMonitoring()">
+                                                <i class="bi bi-arrow-repeat me-2"></i>Erneut laden
+                                            </button>
+                                            <button class="btn btn-outline-secondary ms-2" onclick="showToast('🚧 Preisüberwachung wird in Kürze verfügbar sein', 'info')">
+                                                <i class="bi bi-info-circle me-2"></i>Mehr erfahren
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
             }
         }
         
@@ -12090,6 +12160,41 @@
                 }
             });
             
+            // Add universal tooltips for all icons
+            setTimeout(() => {
+                const iconTooltips = {
+                    'bi-eye': 'Details anzeigen',
+                    'bi-pencil': 'Bearbeiten', 
+                    'bi-check': 'Bestätigen',
+                    'bi-check-circle': 'Genehmigen',
+                    'bi-trash': 'Löschen',
+                    'bi-plus': 'Hinzufügen',
+                    'bi-download': 'Herunterladen',
+                    'bi-upload': 'Hochladen',
+                    'bi-arrow-repeat': 'Aktualisieren',
+                    'bi-info-circle': 'Informationen'
+                };
+                
+                Object.entries(iconTooltips).forEach(([iconClass, tooltip]) => {
+                    document.querySelectorAll(`button .${iconClass}, a .${iconClass}`).forEach(icon => {
+                        const button = icon.closest('button') || icon.closest('a');
+                        if (button && !button.title) {
+                            button.title = tooltip;
+                            button.setAttribute('data-bs-toggle', 'tooltip');
+                        }
+                    });
+                });
+                
+                // Initialize Bootstrap tooltips
+                if (typeof bootstrap !== 'undefined') {
+                    new bootstrap.Tooltip(document.body, {
+                        selector: '[data-bs-toggle="tooltip"]'
+                    });
+                }
+                
+                console.log('✅ Universal tooltips added');
+            }, 3000);
+            
             // Universal event delegation system - fixes ALL button problems
             document.addEventListener('click', function(e) {
                 const action = e.target.dataset.action || e.target.closest('[data-action]')?.dataset.action;
@@ -12124,6 +12229,21 @@
                     e.preventDefault();
                     showToast('📊 Preisvergleich läuft...', 'info');
                     setTimeout(() => showToast('✅ Preisvergleich abgeschlossen!', 'success'), 2000);
+                }
+                
+                // Handle unimplemented features with helpful feedback
+                if (e.target.textContent.includes('Coming Soon') || e.target.textContent.includes('In Entwicklung')) {
+                    e.preventDefault();
+                    showToast('🚧 Diese Funktion wird in einer zukünftigen Version verfügbar sein', 'info');
+                }
+                
+                // Generic fallback for buttons without specific handlers
+                if (e.target.tagName === 'BUTTON' && !e.target.onclick && !e.target.dataset.action) {
+                    const buttonText = e.target.textContent.trim();
+                    if (buttonText && buttonText.length > 2) {
+                        console.log('🔍 Unhandled button clicked:', buttonText);
+                        showToast(`ℹ️ "${buttonText}" - Funktion wird vorbereitet...`, 'info');
+                    }
                 }
                 
                 // Handle modal buttons in Wareneingang
@@ -14051,6 +14171,25 @@
             } catch (error) {
                 console.error('Error loading invoices:', error);
                 showToast('Fehler beim Laden der Rechnungen', 'error');
+                
+                // Show placeholder instead of empty page
+                const tbody = document.getElementById('invoicesTableBody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="bi bi-file-earmark-text text-muted" style="font-size: 3rem;"></i>
+                                    <h5 class="text-muted mt-3">Keine Rechnungen verfügbar</h5>
+                                    <p class="text-muted">Die Rechnungsdaten konnten nicht geladen werden.</p>
+                                    <button class="btn btn-primary" onclick="loadInvoices()">
+                                        <i class="bi bi-arrow-repeat me-2"></i>Erneut laden
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
             }
         }
         
@@ -14229,6 +14368,25 @@
             } catch (error) {
                 console.error('Error loading customers:', error);
                 showToast('Fehler beim Laden der Kunden', 'error');
+                
+                // Show placeholder instead of empty page
+                const tbody = document.getElementById('customersTableBody');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="d-flex flex-column align-items-center">
+                                    <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                                    <h5 class="text-muted mt-3">Keine Kunden verfügbar</h5>
+                                    <p class="text-muted">Die Kundendaten konnten nicht geladen werden.</p>
+                                    <button class="btn btn-primary" onclick="loadCustomers()">
+                                        <i class="bi bi-arrow-repeat me-2"></i>Erneut laden
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
             }
         }
         
