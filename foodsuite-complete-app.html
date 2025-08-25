@@ -2118,11 +2118,11 @@
                             <div class="col-md-4">
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-search"></i></span>
-                                    <input type="text" class="form-control" id="productSearchInput" placeholder="Produkte suchen..." oninput="filterProducts(this.value)">
+                                    <input type="text" class="form-control" id="productSearchInput" placeholder="Produkte suchen...">
                                 </div>
                             </div>
                             <div class="col-md-2">
-                                <select class="form-select" onchange="filterByCategory(this.value)">
+                                <select class="form-select" id="productCategoryFilter">
                                     <option value="">Alle Kategorien</option>
                                     <option value="fleisch">Fleisch</option>
                                     <option value="gemuese">Gemüse</option>
@@ -12088,6 +12088,17 @@
                     setTimeout(() => showToast('✅ Report erfolgreich exportiert!', 'success'), 1500);
                 }
             });
+            
+            // Setup event listeners for search/filter
+            const productSearchInput = document.getElementById('productSearchInput');
+            if (productSearchInput) {
+                productSearchInput.addEventListener('input', (e) => filterProducts(e.target.value));
+            }
+            
+            const categoryFilter = document.getElementById('productCategoryFilter');
+            if (categoryFilter) {
+                categoryFilter.addEventListener('change', (e) => filterByCategory(e.target.value));
+            }
             
             // Preload all critical data for immediate use  
             setTimeout(() => {
