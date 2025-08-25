@@ -2732,6 +2732,93 @@
         </div>
     </div>
 
+    <!-- Create Product Modal -->
+    <div class="modal fade" id="createProductModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Neues Produkt anlegen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createProductForm">
+                        <div class="mb-3">
+                            <label class="form-label">Produktname *</label>
+                            <input type="text" class="form-control" id="productName" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Kategorie</label>
+                                    <select class="form-select" id="productCategory">
+                                        <option value="meat">Fleisch</option>
+                                        <option value="vegetables">Gemüse</option>
+                                        <option value="dairy">Milchprodukte</option>
+                                        <option value="grains">Getreide</option>
+                                        <option value="spices">Gewürze</option>
+                                        <option value="beverages">Getränke</option>
+                                        <option value="frozen">Tiefkühl</option>
+                                        <option value="other">Sonstiges</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Einheit</label>
+                                    <input type="text" class="form-control" id="productUnit" placeholder="kg, L, Stück...">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Preis (€)</label>
+                                    <input type="number" class="form-control" id="productPrice" step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Lieferant</label>
+                                    <select class="form-select" id="productSupplier">
+                                        <option value="">Lieferant wählen...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Lagerbestand</label>
+                                    <input type="number" class="form-control" id="productStock" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Min. Bestand</label>
+                                    <input type="number" class="form-control" id="productMinStock" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Max. Bestand</label>
+                                    <input type="number" class="form-control" id="productMaxStock" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Lagerort</label>
+                            <input type="text" class="form-control" id="productLocation" placeholder="Kühlhaus, Trockenlager...">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-primary" onclick="saveNewProduct()">Produkt speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Price Alert Modal -->
     <div class="modal fade" id="priceAlertModal" tabindex="-1">
         <div class="modal-dialog">
@@ -8642,6 +8729,49 @@
             const modal = bootstrap.Modal.getInstance(document.querySelector('.modal.show'));
             modal.hide();
         }
+        
+        async function saveNewProduct() {
+            const formData = {
+                name: document.getElementById('productName').value,
+                category: document.getElementById('productCategory').value,
+                unit: document.getElementById('productUnit').value,
+                price: parseFloat(document.getElementById('productPrice').value) || 0,
+                supplier_id: parseInt(document.getElementById('productSupplier').value) || null,
+                stock: parseInt(document.getElementById('productStock').value) || 0,
+                min_stock: parseInt(document.getElementById('productMinStock').value) || 0,
+                max_stock: parseInt(document.getElementById('productMaxStock').value) || 1000,
+                storage_location: document.getElementById('productLocation').value
+            };
+            
+            if (!formData.name) {
+                showToast('❌ Produktname ist erforderlich!', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/products`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-tenant-id': TENANT_ID
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (response.ok) {
+                    showToast(`✅ Produkt "${formData.name}" erfolgreich erstellt!`, 'success');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('createProductModal'));
+                    modal.hide();
+                    loadProducts(); // Refresh product list
+                } else {
+                    const error = await response.json();
+                    showToast(`❌ Fehler: ${error.message || 'Konnte Produkt nicht erstellen'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Save product error:', error);
+                showToast('❌ Fehler beim Speichern des Produkts', 'error');
+            }
+        }
 
         function deleteProduct(productId) {
             if (confirm('Möchten Sie dieses Produkt wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
@@ -9833,21 +9963,71 @@
 
         function filterProducts(searchTerm) {
             console.log('Filtering products:', searchTerm);
+            const rows = document.querySelectorAll('#productTable tbody tr');
+            
+            rows.forEach(row => {
+                const name = row.querySelector('td:first-child')?.textContent?.toLowerCase() || '';
+                const visible = !searchTerm || name.includes(searchTerm.toLowerCase());
+                row.style.display = visible ? '' : 'none';
+            });
+            
+            showToast(`🔍 ${searchTerm ? 'Suche: ' + searchTerm : 'Alle Produkte'}`, 'info');
         }
 
         function filterByCategory(category) {
             console.log('Filtering by category:', category);
+            const rows = document.querySelectorAll('#productTable tbody tr');
+            
+            rows.forEach(row => {
+                const categoryCell = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
+                const visible = !category || categoryCell.includes(category.toLowerCase());
+                row.style.display = visible ? '' : 'none';
+            });
+            
+            showToast(`📂 Kategorie: ${category || 'Alle'}`, 'info');
         }
 
         function filterByStock(stock) {
             console.log('Filtering by stock:', stock);
+            const rows = document.querySelectorAll('#productTable tbody tr');
+            
+            rows.forEach(row => {
+                const stockCell = row.querySelector('td:nth-child(4)')?.textContent || '0';
+                const stockValue = parseInt(stockCell);
+                let visible = true;
+                
+                if (stock === 'low') visible = stockValue < 10;
+                else if (stock === 'medium') visible = stockValue >= 10 && stockValue < 50;
+                else if (stock === 'high') visible = stockValue >= 50;
+                
+                row.style.display = visible ? '' : 'none';
+            });
+            
+            showToast(`📦 Lagerbestand: ${stock || 'Alle'}`, 'info');
         }
 
         function filterByStatus(status) {
             console.log('Filtering by status:', status);
+            const rows = document.querySelectorAll('#productTable tbody tr');
+            
+            rows.forEach(row => {
+                const statusCell = row.querySelector('.badge')?.textContent?.toLowerCase() || '';
+                const visible = !status || statusCell.includes(status.toLowerCase());
+                row.style.display = visible ? '' : 'none';
+            });
+            
+            showToast(`🔄 Status: ${status || 'Alle'}`, 'info');
         }
 
         function clearProductFilters() {
+            const rows = document.querySelectorAll('#productTable tbody tr');
+            rows.forEach(row => row.style.display = '');
+            
+            // Reset form fields
+            document.querySelectorAll('#productFilters input, #productFilters select').forEach(input => {
+                input.value = '';
+            });
+            
             showToast('🔄 Filter zurückgesetzt', 'info');
         }
 

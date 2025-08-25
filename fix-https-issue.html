@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FoodSuite - HTTPS Fix</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>FoodSuite AWS - Korrektur für HTTPS Problem</h1>
+    <p>Bitte verwende diesen Link:</p>
+    <h2><a href="http://18.195.206.72:3005">http://18.195.206.72:3005</a></h2>
+    
+    <hr>
+    <h3>Alternativ - Quick Fix:</h3>
+    <p>Falls du bereits auf der Seite bist, führe diesen Code in der Browser-Konsole aus:</p>
+    <pre style="background: #f0f0f0; padding: 10px;">
+// Fix API URLs to use HTTP instead of HTTPS
+window.API_BASE_URL = 'http://18.195.206.72:3005/api';
+window.apiClient.baseURL = 'http://18.195.206.72:3005/api';
+
+// Reload the current tab
+if (window.currentTab) {
+    window.showTab(window.currentTab);
+}
+    </pre>
+    
+    <hr>
+    <h3>Permanente Lösung:</h3>
+    <p>Die foodsuite-complete-app.html muss angepasst werden:</p>
+    <pre style="background: #f0f0f0; padding: 10px;">
+// Zeile 9791 ändern von:
+const API_BASE_URL = window.location.origin + '/api';
+
+// Zu:
+const API_BASE_URL = 'http://18.195.206.72:3005/api';
+    </pre>
+</body>
+</html>

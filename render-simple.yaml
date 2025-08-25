@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: foodsuite-simple
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_TYPE
+        value: memory
+      - key: PORT
+        value: 3000
