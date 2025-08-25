@@ -8938,6 +8938,26 @@
             modal.hide();
         }
         
+        function viewOrderDetails(orderId) {
+            showToast(`📋 Bestelldetails für Bestellung #${orderId}`, 'info');
+            // In production: Show detailed order modal
+        }
+        
+        function viewProductDetails(productId) {
+            showToast(`📦 Produktdetails für Produkt #${productId}`, 'info');
+            // In production: Show detailed product modal
+        }
+        
+        function editProductDetails(productId) {
+            showToast(`✏️ Bearbeitung für Produkt #${productId}`, 'info');
+            // In production: Open edit modal
+        }
+        
+        // Fix undefined warnings in templates
+        function safeRender(value, fallback = 'N/A') {
+            return (value !== undefined && value !== null && value !== '') ? value : fallback;
+        }
+        
         async function saveNewOrder() {
             const formData = {
                 supplier_id: parseInt(document.getElementById('orderSupplier').value),
@@ -10246,7 +10266,7 @@
 
         function filterProducts(searchTerm) {
             console.log('Filtering products:', searchTerm);
-            const rows = document.querySelectorAll('#productTable tbody tr');
+            const rows = document.querySelectorAll('#productsTableBody tr');
             
             rows.forEach(row => {
                 const name = row.querySelector('td:first-child')?.textContent?.toLowerCase() || '';
@@ -10259,7 +10279,7 @@
 
         function filterByCategory(category) {
             console.log('Filtering by category:', category);
-            const rows = document.querySelectorAll('#productTable tbody tr');
+            const rows = document.querySelectorAll('#productsTableBody tr');
             
             rows.forEach(row => {
                 const categoryCell = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
@@ -10272,7 +10292,7 @@
 
         function filterByStock(stock) {
             console.log('Filtering by stock:', stock);
-            const rows = document.querySelectorAll('#productTable tbody tr');
+            const rows = document.querySelectorAll('#productsTableBody tr');
             
             rows.forEach(row => {
                 const stockCell = row.querySelector('td:nth-child(4)')?.textContent || '0';
@@ -10291,7 +10311,7 @@
 
         function filterByStatus(status) {
             console.log('Filtering by status:', status);
-            const rows = document.querySelectorAll('#productTable tbody tr');
+            const rows = document.querySelectorAll('#productsTableBody tr');
             
             rows.forEach(row => {
                 const statusCell = row.querySelector('.badge')?.textContent?.toLowerCase() || '';
@@ -10303,7 +10323,7 @@
         }
 
         function clearProductFilters() {
-            const rows = document.querySelectorAll('#productTable tbody tr');
+            const rows = document.querySelectorAll('#productsTableBody tr');
             rows.forEach(row => row.style.display = '');
             
             // Reset form fields
@@ -13703,13 +13723,13 @@
         // ========= INVOICE FUNCTIONS =========
         async function loadInvoices() {
             try {
-                // Demo data instead of broken API
+                // Demo data with correct field names for displayInvoices()
                 const demoInvoices = [
-                    { id: 1001, customer: "Restaurant Zur Sonne", date: "2025-08-20", amount: 1250.50, status: "paid", items: 15 },
-                    { id: 1002, customer: "Kantine Stadtwerke", date: "2025-08-18", amount: 890.75, status: "pending", items: 12 },
-                    { id: 1003, customer: "Hotel Goldener Hirsch", date: "2025-08-15", amount: 2100.25, status: "overdue", items: 28 },
-                    { id: 1004, customer: "Schulkantine Gymnasium", date: "2025-08-12", amount: 675.00, status: "paid", items: 10 },
-                    { id: 1005, customer: "Betriebsrestaurant TechCorp", date: "2025-08-10", amount: 1580.90, status: "pending", items: 22 }
+                    { id: 1001, invoiceNumber: "RE-2025-001", customerName: "Restaurant Zur Sonne", issueDate: "2025-08-20", dueDate: "2025-09-19", amount: 1250.50, status: "paid", items: 15 },
+                    { id: 1002, invoiceNumber: "RE-2025-002", customerName: "Kantine Stadtwerke", issueDate: "2025-08-18", dueDate: "2025-09-17", amount: 890.75, status: "pending", items: 12 },
+                    { id: 1003, invoiceNumber: "RE-2025-003", customerName: "Hotel Goldener Hirsch", issueDate: "2025-08-15", dueDate: "2025-09-14", amount: 2100.25, status: "overdue", items: 28 },
+                    { id: 1004, invoiceNumber: "RE-2025-004", customerName: "Schulkantine Gymnasium", issueDate: "2025-08-12", dueDate: "2025-09-11", amount: 675.00, status: "paid", items: 10 },
+                    { id: 1005, invoiceNumber: "RE-2025-005", customerName: "Betriebsrestaurant TechCorp", issueDate: "2025-08-10", dueDate: "2025-09-09", amount: 1580.90, status: "pending", items: 22 }
                 ];
                 
                 displayInvoices(demoInvoices);
