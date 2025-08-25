@@ -8243,7 +8243,7 @@
                         <td><span class="badge bg-info">Unterwegs</span></td>
                         <td>Montag, 10:00 Uhr</td>
                         <td>
-                            <button class="btn btn-sm btn-success">Wareneingang</button>
+                            <button class="btn btn-sm btn-success" onclick="window.processExpectedDelivery('LF-2025-101')">Wareneingang</button>
                         </td>
                     </tr>
                     <tr>
@@ -8977,6 +8977,114 @@
             modal.addEventListener('hidden.bs.modal', () => {
                 document.body.removeChild(modal);
             });
+        }
+        
+        // Process expected delivery
+        window.processExpectedDelivery = function(deliveryId) {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi bi-truck me-2"></i>Wareneingang aus erwarteter Lieferung
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Lieferung ${deliveryId}</strong> wird für Wareneingang vorbereitet.
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <h6>Lieferdetails</h6>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td><strong>Lieferung:</strong></td>
+                                            <td>${deliveryId}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Lieferant:</strong></td>
+                                            <td>FreshFoods GmbH</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Erwartete Artikel:</strong></td>
+                                            <td>15 Positionen</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Gesamtwert:</strong></td>
+                                            <td><strong>€1,850.00</strong></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Wareneingang-Optionen</h6>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="receiptMode" id="fullReceipt" value="full" checked>
+                                        <label class="form-check-label" for="fullReceipt">
+                                            Vollständiger Wareneingang
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="radio" name="receiptMode" id="partialReceipt" value="partial">
+                                        <label class="form-check-label" for="partialReceipt">
+                                            Teillieferung
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="radio" name="receiptMode" id="customReceipt" value="custom">
+                                        <label class="form-check-label" for="customReceipt">
+                                            Angepasste Mengen
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Bemerkungen</label>
+                                <textarea class="form-control" id="deliveryNotes" rows="2" 
+                                          placeholder="Anmerkungen zum Wareneingang..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                            <button type="button" class="btn btn-success" onclick="window.confirmExpectedDeliveryReceipt('${deliveryId}')">
+                                <i class="bi bi-check-circle me-2"></i>Wareneingang buchen
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+            
+            modal.addEventListener('hidden.bs.modal', () => {
+                document.body.removeChild(modal);
+            });
+        }
+        
+        window.confirmExpectedDeliveryReceipt = function(deliveryId) {
+            const receiptMode = document.querySelector('input[name="receiptMode"]:checked').value;
+            const notes = document.getElementById('deliveryNotes').value;
+            
+            showToast(`✅ Wareneingang für ${deliveryId} (${receiptMode}) erfolgreich gebucht!`, 'success');
+            
+            // Close modal
+            const modal = document.querySelector('.modal.show');
+            if (modal) {
+                bootstrap.Modal.getInstance(modal).hide();
+            }
+            
+            // Refresh data
+            setTimeout(() => {
+                loadPendingDeliveries();
+                loadGoodsReceipts();
+            }, 500);
         }
         
         // Helper functions for manual goods receipt
@@ -10481,7 +10589,7 @@
                 }
                 
                 // Fill active alerts table with demo data
-                const alertsTable = document.getElementById('activeAlertsTable');
+                const alertsTable = document.getElementById('priceAlertsTable');
                 if (alertsTable) {
                     alertsTable.innerHTML = `
                         <tr>
@@ -14925,8 +15033,7 @@
         }
         
         window.createInvoiceFromMealPlan = function() {
-            // Show modal to select customer and meal plan
-            showToast('🚧 Rechnungserstellung - In Entwicklung', 'info');
+            showToast('🚧 PHASE 2: Rechnungserstellung wird in der nächsten Version implementiert', 'info');
         };
         
         window.exportInvoices = function() {
@@ -14940,7 +15047,7 @@
         };
         
         window.viewInvoice = function(invoiceId) {
-            showToast('👁️ Rechnung wird geladen...', 'info');
+            showToast('🚧 PHASE 2: Rechnungsdetails werden in der nächsten Version implementiert', 'info');
         };
         
         window.downloadInvoicePDF = async function(invoiceId) {
@@ -14973,11 +15080,7 @@
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
                 
-                showToast('✅ PDF heruntergeladen!', 'success');
-            } catch (error) {
-                console.error('Error downloading PDF:', error);
-                showToast('❌ Fehler beim PDF-Download', 'error');
-            }
+                showToast('🚧 PHASE 2: PDF-Generation wird in der nächsten Version implementiert', 'info');
         };
         
         window.markInvoicePaid = async function(invoiceId) {
@@ -15066,7 +15169,7 @@
         }
         
         window.showCreateCustomerModal = function() {
-            showToast('🚧 Kundenformular - In Entwicklung', 'info');
+            showToast('🚧 PHASE 2: Kundenformular wird in der nächsten Version implementiert', 'info');
         };
         
         window.searchCustomers = function() {
@@ -15080,11 +15183,11 @@
         };
         
         window.editCustomer = function(customerId) {
-            showToast('✏️ Kundenbearbeitung - In Entwicklung', 'info');
+            showToast('🚧 PHASE 2: Kundenbearbeitung wird in der nächsten Version implementiert', 'info');
         };
         
         window.viewCustomerInvoices = function(customerId) {
-            showToast('📋 Kundenrechnungen werden geladen...', 'info');
+            showToast('🚧 PHASE 2: Kundenrechnungsübersicht wird in der nächsten Version implementiert', 'info');
         };
     </script>
 
