@@ -163,6 +163,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/ai', require('./routes/ai'));
 app.use('/api/price-monitoring', require('./routes/price-monitoring'));
 app.use('/api/goods-receipts', require('./routes/goods-receipts'));
+app.use('/api/automation-settings', require('./routes/automation'));
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/customers', customerRoutes);
 
