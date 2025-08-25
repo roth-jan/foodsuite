@@ -7792,9 +7792,10 @@
                 document.getElementById('outOfStockCount').textContent = summary.summary.out_of_stock_count || 0;
                 document.getElementById('lowStockCount').textContent = summary.summary.low_stock_count || 0;
                 
-                // Calculate reorder suggestions count
-                const reorderCount = summary.alerts ? summary.alerts.reorder.length : 0;
-                document.getElementById('reorderSuggestions').textContent = reorderCount;
+                // Calculate reorder suggestions count - safe access
+                const reorderCount = (summary.alerts && summary.alerts.reorder && summary.alerts.reorder.length) || 0;
+                const reorderEl = document.getElementById('reorderSuggestions');
+                if (reorderEl) reorderEl.textContent = reorderCount;
                 
                 // Update total value
                 document.getElementById('totalInventoryValue').textContent = 
@@ -14050,17 +14051,43 @@
         }
         
         function updateInvoiceStats(stats) {
-            document.getElementById('openInvoicesCount').textContent = stats.byStatus.sent || 0;
-            document.getElementById('openInvoicesValue').textContent = `€${((stats.outstanding || 0).toFixed(2))}`;
+            // Safe property access with fallbacks
+            const openCount = (stats.byStatus && stats.byStatus.sent) || stats.pending_count || 0;
+            const openValue = stats.outstanding || stats.pending_amount || 0;
             
-            document.getElementById('paidInvoicesCount').textContent = stats.byStatus.paid || 0;
-            document.getElementById('paidInvoicesValue').textContent = `€${((stats.totalPaid || 0).toFixed(2))}`;
+            const paidCount = (stats.byStatus && stats.byStatus.paid) || stats.paid_count || 0; 
+            const paidValue = stats.totalPaid || stats.paid_amount || 0;
             
-            document.getElementById('overdueInvoicesCount').textContent = stats.byStatus.overdue || 0;
-            document.getElementById('overdueInvoicesValue').textContent = `€${((stats.overdue || 0).toFixed(2))}`;
+            const overdueCount = (stats.byStatus && stats.byStatus.overdue) || stats.overdue_count || 0;
+            const overdueValue = stats.overdue_amount || 0;
             
-            document.getElementById('totalInvoicesCount').textContent = stats.total || 0;
-            document.getElementById('totalInvoicesValue').textContent = `€${((stats.totalValue || 0).toFixed(2))}`;
+            const totalCount = stats.total || stats.total_invoices || 0;
+            const totalValue = stats.totalValue || stats.total_amount || 0;
+            
+            // Safe DOM updates
+            const openCountEl = document.getElementById('openInvoicesCount');
+            if (openCountEl) openCountEl.textContent = openCount;
+            
+            const openValueEl = document.getElementById('openInvoicesValue');
+            if (openValueEl) openValueEl.textContent = `€${openValue.toFixed(2)}`;
+            
+            const paidCountEl = document.getElementById('paidInvoicesCount');
+            if (paidCountEl) paidCountEl.textContent = paidCount;
+            
+            const paidValueEl = document.getElementById('paidInvoicesValue');
+            if (paidValueEl) paidValueEl.textContent = `€${paidValue.toFixed(2)}`;
+            
+            const overdueCountEl = document.getElementById('overdueInvoicesCount');
+            if (overdueCountEl) overdueCountEl.textContent = overdueCount;
+            
+            const overdueValueEl = document.getElementById('overdueInvoicesValue');
+            if (overdueValueEl) overdueValueEl.textContent = `€${overdueValue.toFixed(2)}`;
+            
+            const totalCountEl = document.getElementById('totalInvoicesCount');
+            if (totalCountEl) totalCountEl.textContent = totalCount;
+            
+            const totalValueEl = document.getElementById('totalInvoicesValue');  
+            if (totalValueEl) totalValueEl.textContent = `€${totalValue.toFixed(2)}`;
         }
         
         window.createInvoiceFromMealPlan = function() {
