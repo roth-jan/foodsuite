@@ -10559,31 +10559,59 @@
                 if (avgSavingsPercent) avgSavingsPercent.textContent = '8.5%';
                 if (totalSavingsAmount) totalSavingsAmount.textContent = '€1,247';
                 
-                // Fill price comparison table with demo data
-                const priceComparisonTable = document.getElementById('priceComparisonTable');
-                if (priceComparisonTable) {
-                    const tbody = priceComparisonTable.querySelector('tbody') || priceComparisonTable;
-                    tbody.innerHTML = `
+                // Fill supplier price comparison table with demo data
+                const supplierComparisonTable = document.getElementById('supplierComparisonTable');
+                if (supplierComparisonTable) {
+                    supplierComparisonTable.innerHTML = `
                         <tr>
                             <td><strong>Bio-Tomaten rot, 5kg Kiste</strong></td>
+                            <td>METRO AG</td>
                             <td><span class="text-danger">€19.90</span></td>
-                            <td><span class="text-success">€17.50</span></td>
                             <td>BioFrisch Vertrieb</td>
-                            <td><span class="badge bg-warning">Prüfen</span></td>
+                            <td><span class="text-success">€17.50</span></td>
+                            <td><strong class="text-success">€2.40</strong></td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="switchSupplier(1001, 'BioFrisch Vertrieb')">
+                                    <i class="bi bi-arrow-right me-1"></i>Wechseln
+                                </button>
+                            </td>
                         </tr>
                         <tr>
                             <td><strong>Kartoffeln festkochend, 25kg Sack</strong></td>
-                            <td><span class="text-success">€18.90</span></td>
+                            <td>METRO AG</td>
                             <td><span class="text-success">€18.90</span></td>
                             <td>METRO AG</td>
-                            <td><span class="badge bg-success">Optimal</span></td>
+                            <td><span class="text-success">€18.90</span></td>
+                            <td><span class="text-muted">€0.00</span></td>
+                            <td>
+                                <span class="badge bg-success">Optimal</span>
+                            </td>
                         </tr>
                         <tr>
                             <td><strong>Rindergulasch, 5kg Packung</strong></td>
+                            <td>Großhandel Schmidt</td>
                             <td><span class="text-danger">€62.50</span></td>
-                            <td><span class="text-success">€58.50</span></td>
                             <td>Fleischerei Wagner</td>
-                            <td><span class="badge bg-warning">Prüfen</span></td>
+                            <td><span class="text-success">€58.50</span></td>
+                            <td><strong class="text-success">€4.00</strong></td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="switchSupplier(1002, 'Fleischerei Wagner')">
+                                    <i class="bi bi-arrow-right me-1"></i>Wechseln
+                                </button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hähnchenbrust, 5kg Packung</strong></td>
+                            <td>BioFrisch Vertrieb</td>
+                            <td><span class="text-warning">€48.90</span></td>
+                            <td>Fleischerei Wagner</td>
+                            <td><span class="text-success">€45.20</span></td>
+                            <td><strong class="text-success">€3.70</strong></td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="switchSupplier(1004, 'Fleischerei Wagner')">
+                                    <i class="bi bi-arrow-right me-1"></i>Wechseln
+                                </button>
+                            </td>
                         </tr>
                     `;
                 }

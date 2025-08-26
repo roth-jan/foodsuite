@@ -192,3 +192,102 @@ Features marked with `🚧 PHASE 2:` in toast messages:
 - Most API routes have auth disabled for demo (`// const { authenticate } = require('../middleware/auth-middleware');`)
 - Routes that still require auth: goods receipt POST (legacy)
 - Frontend uses session-based auth, not JWT for most operations
+
+## Data Architecture Deep Dive
+
+### In-Memory Database Structure (`database/db-memory.js`)
+Complex data relationships across multiple entities:
+```javascript
+{
+  // Legacy system (being phased out)
+  products: [],                    // Old product system
+  recipe_ingredients: [],          // Legacy ingredient refs
+  
+  // NEW Article System (current)
+  neutral_articles: [],            // Generic articles (Zwiebeln, Gewürze)
+  supplier_articles: [],           // Concrete supplier products with prices
+  recipe_ingredients_new: [],      // Links recipes to articles
+  
+  // Core business entities
+  recipes: [],                     // 75+ demo recipes with cost calculations
+  suppliers: [],                   // 7 suppliers with rating system
+  orders: [],                      // Purchase orders with multi-state workflow
+  goods_receipts: [],              // Warehouse receiving with items
+  inventory_transactions: [],      // Stock movements tracking
+  
+  // Multi-tenant system
+  tenants: [],                     // Tenant isolation
+  users: [],                       // User management with roles
+  user_sessions: []                // Session-based auth
+}
+```
+
+### Article Resolution Logic (`database/article-system.js`)
+Critical business logic for recipe cost calculation:
+1. Try to find specific `supplier_article_id` (exact price, nutrition)
+2. Fallback to `neutral_article_id` (estimated price)
+3. Error if neither found
+- Migration system converts legacy string ingredients to article references
+- Cost calculations depend on this hierarchy working correctly
+
+### Frontend Architecture Patterns
+Single-file application with sophisticated state management:
+
+**Tab System:** Custom implementation bypassing Bootstrap tabs for complex workflows
+```javascript
+window.showTab(tabId) // Hide all, show target, trigger data loading
+```
+
+**Modal Creation Pattern:** Dynamic Bootstrap modals for all interactions
+```javascript
+const modal = document.createElement('div');
+modal.className = 'modal fade';
+modal.innerHTML = `...`;
+document.body.appendChild(modal);
+const bsModal = new bootstrap.Modal(modal);
+bsModal.show();
+modal.addEventListener('hidden.bs.modal', () => document.body.removeChild(modal));
+```
+
+**Generic Button Handler:** Central click dispatcher with intelligent fallbacks
+```javascript
+// Handles all buttons without specific onclick handlers
+// Skip-list prevents standard UI buttons from showing "preparation" messages
+```
+
+### Deployment Considerations
+- **Render Service Name**: `foodsuite-3` (configured in CORS origins)
+- **Auto-deployment**: Pushes to `main` branch trigger automatic Render deployment
+- **Health Check**: `/api/health` endpoint for monitoring
+- **Environment**: Memory DB reset on each deployment (no persistence)
+
+## Advanced Architecture Insights
+
+### AI Meal Planning Engine (`routes/ai.js`)
+Rule-based optimization system with multiple strategies:
+```javascript
+// Frontend sends mapped modes (cost → cost_optimized)
+const modeMapping = { cost: 'cost_optimized', nutrition: 'balanced_nutrition' };
+// Backend applies weights: cost=0.7, nutrition=0.2, variety=0.1 for cost_optimized
+```
+- Returns 21 meals (7 days × 3 meals) with cost calculations
+- Uses real recipe cost data from article system
+- Filters by dietary restrictions and inventory availability
+
+### Cost Calculation Pipeline
+Complex multi-stage cost resolution:
+1. **Recipe Level**: `database/article-system.js` calculates costs per recipe
+2. **API Level**: `routes/recipes.js` provides cost breakdown with confidence levels
+3. **Frontend Level**: Real-time cost updates in meal planning drag-drop
+
+### Error Handling Architecture
+- **Backend**: Consistent `{ error: "message" }` format across all routes
+- **Frontend**: Central `api.js` wrapper with tenant header injection
+- **Fallbacks**: Demo data loading when APIs fail, preventing blank screens
+
+### Render.com Deployment Notes
+Current deployment uses service name `foodsuite-3.onrender.com`:
+- CORS configured for production domain
+- Automatic deployment from GitHub main branch
+- Memory database resets on each deploy
+- Health checks prevent deployment failures
