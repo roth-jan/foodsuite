@@ -10559,9 +10559,12 @@
                 if (avgSavingsPercent) avgSavingsPercent.textContent = '8.5%';
                 if (totalSavingsAmount) totalSavingsAmount.textContent = '€1,247';
                 
-                // Fill supplier price comparison table with demo data
-                const supplierComparisonTable = document.getElementById('supplierComparisonTable');
-                if (supplierComparisonTable) {
+                // Fill supplier price comparison table with demo data - add delay for DOM readiness
+                setTimeout(() => {
+                    const supplierComparisonTable = document.getElementById('supplierComparisonTable');
+                    console.log('🔍 Supplier comparison table element:', supplierComparisonTable);
+                    if (supplierComparisonTable) {
+                        console.log('✅ Filling supplier comparison table with demo data');
                     supplierComparisonTable.innerHTML = `
                         <tr>
                             <td><strong>Bio-Tomaten rot, 5kg Kiste</strong></td>
@@ -10614,7 +10617,29 @@
                             </td>
                         </tr>
                     `;
-                }
+                } else {
+                    console.error('❌ Supplier comparison table element not found!');
+                    // Fallback: Try to find by alternative selector
+                    const fallbackTable = document.querySelector('#price-monitoring .table tbody');
+                    if (fallbackTable) {
+                        console.log('🔄 Using fallback selector for supplier table');
+                        fallbackTable.innerHTML = `
+                            <tr>
+                                <td><strong>Bio-Tomaten rot, 5kg Kiste</strong></td>
+                                <td>METRO AG</td>
+                                <td><span class="text-danger">€19.90</span></td>
+                                <td>BioFrisch Vertrieb</td>
+                                <td><span class="text-success">€17.50</span></td>
+                                <td><strong class="text-success">€2.40</strong></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" onclick="switchSupplier(1001, 'BioFrisch Vertrieb')">
+                                        <i class="bi bi-arrow-right me-1"></i>Wechseln
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                }, 100); // Small delay for DOM readiness
                 
                 // Fill active alerts table with demo data
                 const alertsTable = document.getElementById('priceAlertsTable');
