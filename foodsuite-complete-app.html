@@ -15108,37 +15108,8 @@
             showToast('🚧 PHASE 2: Rechnungsdetails werden in der nächsten Version implementiert', 'info');
         };
         
-        window.downloadInvoicePDF = async function(invoiceId) {
-            try {
-                showToast('📄 PDF wird generiert...', 'info');
-                
-                const response = await fetch(`${API_BASE_URL}/invoices/${invoiceId}/pdf`, {
-                    headers: { 'x-tenant-id': TENANT_ID }
-                });
-                
-                if (!response.ok) throw new Error('Failed to generate PDF');
-                
-                // Get the filename from the Content-Disposition header
-                const disposition = response.headers.get('Content-Disposition');
-                const filenameMatch = disposition && disposition.match(/filename="(.+)"/);
-                const filename = filenameMatch ? filenameMatch[1] : `Rechnung-${invoiceId}.pdf`;
-                
-                // Convert response to blob
-                const blob = await response.blob();
-                
-                // Create download link
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                
-                // Cleanup
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-                
-                showToast('🚧 PHASE 2: PDF-Generation wird in der nächsten Version implementiert', 'info');
+        window.downloadInvoicePDF = function(invoiceId) {
+            showToast('🚧 PHASE 2: PDF-Generation wird in der nächsten Version implementiert', 'info');
         };
         
         window.markInvoicePaid = async function(invoiceId) {
