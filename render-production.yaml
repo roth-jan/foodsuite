@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: foodsuite-production
+    env: node
+    plan: standard
+    region: frankfurt
+    buildCommand: npm install --production
+    startCommand: node server.js
+    domains:
+      - foodsuite-pro.onrender.com
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_TYPE
+        value: postgres
+      - key: DEFAULT_TENANT_ID
+        value: demo
+      - key: PORT
+        value: 3005
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: foodsuite-postgres
+          property: connectionString
+    healthCheckPath: /api/health
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000; includeSubDomains
+
+databases:
+  - name: foodsuite-postgres
+    databaseName: foodsuite_production
+    user: foodsuite_admin
+    plan: starter

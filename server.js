@@ -28,6 +28,15 @@ const customerRoutes = require('./routes/customers');
 const dbType = process.env.DB_TYPE || 'memory';
 const db = dbType === 'postgres' ? require('./database/postgres-adapter') : require('./database/db-memory');
 
+// Import production systems
+const healthMonitor = require('./middleware/health-monitor');
+const FeatureFlags = require('./middleware/feature-flags');
+const BackupSystem = require('./scripts/backup-system');
+
+// Initialize production systems
+const featureFlags = new FeatureFlags(db);
+const backupSystem = new BackupSystem(db);
+
 const app = express();
 const PORT = process.env.PORT || 3005;
 
@@ -164,25 +173,38 @@ app.use('/api/ai', require('./routes/ai'));
 app.use('/api/price-monitoring', require('./routes/price-monitoring'));
 app.use('/api/goods-receipts', require('./routes/goods-receipts'));
 app.use('/api/automation-settings', require('./routes/automation'));
+app.use('/api/health', require('./routes/health'));
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/customers', customerRoutes);
 
-// Error handling middleware
+// Enhanced error handling middleware with health monitoring
 app.use((err, req, res, next) => {
-    console.error(err.stack);
+    // Log error to health monitor
+    healthMonitor.logError(err, req);
+    
+    console.error('Application Error:', {
+        message: err.message,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+        url: req.originalUrl,
+        method: req.method,
+        tenant: req.tenantId,
+        timestamp: new Date().toISOString()
+    });
     
     if (err.name === 'ValidationError') {
         return res.status(400).json({
             error: 'Validation Error',
             message: err.message,
-            details: err.details
+            details: err.details,
+            timestamp: new Date().toISOString()
         });
     }
     
     if (err.name === 'UnauthorizedError') {
         return res.status(401).json({
             error: 'Unauthorized',
-            message: 'Access token is missing or invalid'
+            message: 'Access token is missing or invalid',
+            timestamp: new Date().toISOString()
         });
     }
     
@@ -190,7 +212,8 @@ app.use((err, req, res, next) => {
         error: 'Internal Server Error',
         message: process.env.NODE_ENV === 'production' ? 
             'Something went wrong!' : 
-            err.message
+            err.message,
+        timestamp: new Date().toISOString()
     });
 });
 
@@ -211,6 +234,22 @@ async function startServer() {
         
         // Make database available to routes
         app.set('db', db);
+        
+        // Initialize production systems
+        if (process.env.NODE_ENV === 'production') {
+            console.log('🏭 Initializing production systems...');
+            
+            // Initialize backup system
+            await backupSystem.initialize();
+            
+            // Start automatic backups (every 6 hours)
+            backupSystem.startAutomaticBackups();
+            
+            // Initialize feature flags
+            await featureFlags.initializeDefaultFlags('demo');
+            
+            console.log('✅ Production systems initialized');
+        }
         
         // Start server
         app.listen(PORT, () => {

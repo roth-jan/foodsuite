@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: foodsuite-staging
+    env: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: node server.js
+    domains:
+      - foodsuite-staging.onrender.com
+    envVars:
+      - key: NODE_ENV
+        value: staging
+      - key: DB_TYPE
+        value: postgres
+      - key: DEFAULT_TENANT_ID
+        value: demo
+      - key: PORT
+        value: 3005
+      - key: STAGING_MODE
+        value: true
+    healthCheckPath: /api/health
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
