@@ -251,6 +251,16 @@ async function startServer() {
             console.log('✅ Production systems initialized');
         }
         
+        // Apply complete product-to-article mappings for business logic consistency
+        const { applyProductArticleMappings } = require('./scripts/map-products-to-articles');
+        const mappingResult = applyProductArticleMappings(db);
+        
+        if (mappingResult.success) {
+            console.log(`🔗 Product-Article mapping completed: ${mappingResult.totalMapped}/${mappingResult.totalProducts} products mapped`);
+        } else {
+            console.log('⚠️ Product-Article mapping failed:', mappingResult.error);
+        }
+        
         // Start server
         app.listen(PORT, () => {
             console.log(`🚀 FoodSuite Backend Server running on port ${PORT}`);

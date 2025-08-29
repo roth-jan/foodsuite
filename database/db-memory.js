@@ -1179,8 +1179,11 @@ class InMemoryDatabase {
     async getProducts(filters = {}) {
         const { tenant_id, search, category, supplier_id, status } = filters;
         
-        // Konvertiere Lieferantenartikel zu legacy Produktformat für Frontend-Kompatibilität
-        let products = this.data.supplier_articles.map(article => {
+        // Kombiniere sowohl Lieferantenartikel als auch gemappte Legacy-Produkte
+        let products = [];
+        
+        // 1. Lieferantenartikel zu legacy Produktformat
+        const supplierArticleProducts = this.data.supplier_articles.map(article => {
             const supplier = this.data.suppliers.find(s => s.id === article.supplier_id);
             const neutralArticle = this.data.neutral_articles.find(n => n.id === article.neutral_article_id);
             const categoryObj = this.data.product_categories.find(c => c.id === neutralArticle?.category_id);
@@ -1215,6 +1218,45 @@ class InMemoryDatabase {
                 updated_at: new Date().toISOString()
             };
         });
+        
+        // 2. Gemappte Legacy-Produkte hinzufügen (die jetzt Artikel-IDs haben)
+        const mappedLegacyProducts = this.data.products.filter(product => 
+            product.supplier_article_id || product.neutral_article_id
+        ).map(product => {
+            const supplier = this.data.suppliers.find(s => s.id === product.supplier_id);
+            
+            return {
+                id: product.id + 10000, // Offset to avoid ID conflicts
+                tenant_id: product.tenant_id,
+                name: product.name,
+                article_number: product.article_number || `LEGACY-${product.id}`,
+                category: product.category,
+                category_id: product.category_id,
+                unit: product.unit,
+                price: product.price,
+                supplier_id: product.supplier_id,
+                supplier_name: supplier?.name || 'Unbekannt',
+                status: product.status || 'active',
+                availability: 'available',
+                
+                // Legacy product data
+                stock: product.stock || 0,
+                min_stock: product.min_stock || 5,
+                max_stock: product.max_stock || 100,
+                consumption_rate_per_day: product.consumption_rate_per_day,
+                storage_location: product.storage_location,
+                
+                // Article system references
+                supplier_article_id: product.supplier_article_id,
+                neutral_article_id: product.neutral_article_id,
+                
+                created_at: product.created_at || new Date().toISOString(),
+                updated_at: product.updated_at || new Date().toISOString()
+            };
+        });
+        
+        // Kombiniere beide Listen
+        products = [...supplierArticleProducts, ...mappedLegacyProducts];
         
         // Filter anwenden
         if (tenant_id) {

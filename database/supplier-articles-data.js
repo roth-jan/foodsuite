@@ -93,6 +93,133 @@ const supplierArticlesData = {
             common_allergens: [],
             estimated_price_range: { min: 1.50, max: 4.00, currency: "EUR" },
             description: "Reis verschiedener Sorten"
+        },
+        // === ERWEITERTE ARTIKEL FÜR VOLLSTÄNDIGE PRODUKTABDECKUNG ===
+        {
+            id: 6,
+            name: "Blumenkohl",
+            category_id: 2, // Gemüse
+            base_unit: "kg",
+            avg_nutrition: {
+                energy_kj: 105,
+                energy_kcal: 25,
+                protein: 1.9,
+                carbs: 5.0,
+                fat: 0.3,
+                fiber: 2.0,
+                salt: 0.015
+            },
+            common_allergens: [],
+            estimated_price_range: { min: 2.00, max: 3.50, currency: "EUR" },
+            description: "Blumenkohl frisch und tiefgekühlt"
+        },
+        {
+            id: 7,
+            name: "Apfelsaft",
+            category_id: 8, // Getränke
+            base_unit: "L",
+            avg_nutrition: {
+                energy_kj: 193,
+                energy_kcal: 46,
+                protein: 0.1,
+                carbs: 11.4,
+                fat: 0.1,
+                fiber: 0.2,
+                salt: 0.002
+            },
+            common_allergens: [],
+            estimated_price_range: { min: 1.20, max: 2.50, currency: "EUR" },
+            description: "Apfelsaft und Apfelsaftkonzentrat"
+        },
+        {
+            id: 8,
+            name: "Sahne",
+            category_id: 4, // Milchprodukte
+            base_unit: "L",
+            avg_nutrition: {
+                energy_kj: 1220,
+                energy_kcal: 292,
+                protein: 2.4,
+                carbs: 3.2,
+                fat: 30.0,
+                fiber: 0,
+                salt: 0.07
+            },
+            common_allergens: ["Milch"],
+            estimated_price_range: { min: 2.50, max: 4.00, currency: "EUR" },
+            description: "Sahne verschiedener Fettstufen"
+        },
+        {
+            id: 9,
+            name: "Möhren",
+            category_id: 2, // Gemüse
+            base_unit: "kg",
+            avg_nutrition: {
+                energy_kj: 172,
+                energy_kcal: 41,
+                protein: 0.9,
+                carbs: 9.6,
+                fat: 0.2,
+                fiber: 2.8,
+                salt: 0.069
+            },
+            common_allergens: [],
+            estimated_price_range: { min: 1.20, max: 2.00, currency: "EUR" },
+            description: "Möhren frisch und als Baby-Möhren"
+        },
+        {
+            id: 10,
+            name: "Nudeln",
+            category_id: 7, // Grundnahrung
+            base_unit: "kg",
+            avg_nutrition: {
+                energy_kj: 1550,
+                energy_kcal: 371,
+                protein: 13.0,
+                carbs: 74.0,
+                fat: 1.5,
+                fiber: 3.2,
+                salt: 0.006
+            },
+            common_allergens: ["Gluten", "Ei"],
+            estimated_price_range: { min: 1.50, max: 3.00, currency: "EUR" },
+            description: "Nudeln verschiedener Formen"
+        },
+        {
+            id: 11,
+            name: "Butter",
+            category_id: 4, // Milchprodukte
+            base_unit: "kg",
+            avg_nutrition: {
+                energy_kj: 3000,
+                energy_kcal: 717,
+                protein: 0.7,
+                carbs: 0.6,
+                fat: 80.0,
+                fiber: 0,
+                salt: 0.011
+            },
+            common_allergens: ["Milch"],
+            estimated_price_range: { min: 6.00, max: 9.00, currency: "EUR" },
+            description: "Butter verschiedener Qualitätsstufen"
+        },
+        {
+            id: 12,
+            name: "Milch",
+            category_id: 4, // Milchprodukte
+            base_unit: "L",
+            avg_nutrition: {
+                energy_kj: 273,
+                energy_kcal: 65,
+                protein: 3.4,
+                carbs: 4.8,
+                fat: 3.8,
+                fiber: 0,
+                salt: 0.12
+            },
+            common_allergens: ["Milch"],
+            estimated_price_range: { min: 0.80, max: 1.20, currency: "EUR" },
+            description: "Milch verschiedener Fettstufen"
         }
     ],
     
@@ -398,6 +525,169 @@ const supplierArticlesData = {
             optional: false,
             substitution_factor: 1.0,
             sort_order: 2
+        },
+        
+        // === ERWEITERTE LIEFERANTENARTIKEL FÜR VOLLSTÄNDIGE ABDECKUNG ===
+        
+        // Blumenkohl - verschiedene Lieferanten
+        {
+            id: 1020,
+            supplier_id: 3, // BioFrisch Vertrieb  
+            article_number: "BIO-BLUMEN-2KG",
+            name: "Blumenkohl TK, 2kg Beutel",
+            neutral_article_id: 6, // Blumenkohl
+            price: 4.50,
+            unit: "2kg Beutel",
+            availability: "available",
+            lead_time_days: 2,
+            nutrition: {
+                energy_kcal: 25,
+                protein: 1.9,
+                carbs: 5.0,
+                fat: 0.3
+            },
+            allergens: [],
+            organic: true,
+            tenant_id: 1,
+            status: "active"
+        },
+        
+        // Apfelsaftkonzentrat - METRO
+        {
+            id: 1021,
+            supplier_id: 1, // METRO AG
+            article_number: "METRO-APFEL-5L",
+            name: "Apfelsaftkonzentrat, 5L Kanister", 
+            neutral_article_id: 7, // Apfelsaft
+            price: 8.90,
+            unit: "5L Kanister",
+            availability: "available",
+            lead_time_days: 1,
+            nutrition: {
+                energy_kcal: 46,
+                protein: 0.1,
+                carbs: 11.4,
+                fat: 0.1
+            },
+            allergens: [],
+            organic: false,
+            tenant_id: 1,
+            status: "active"
+        },
+        
+        // Sahne 30% - Molkerei Hansen
+        {
+            id: 1022,
+            supplier_id: 5, // Molkerei Hansen
+            article_number: "HANSEN-SAHNE-30",
+            name: "Sahne 30%, 5L Kanister",
+            neutral_article_id: 8, // Sahne
+            price: 15.50,
+            unit: "5L Kanister", 
+            availability: "available",
+            lead_time_days: 1,
+            nutrition: {
+                energy_kcal: 292,
+                protein: 2.4,
+                carbs: 3.2,
+                fat: 30.0
+            },
+            allergens: ["Milch"],
+            organic: false,
+            tenant_id: 1,
+            status: "active"
+        },
+        
+        // Möhren - Gemüse Direct
+        {
+            id: 1023,
+            supplier_id: 6, // Gemüse Direct
+            article_number: "GD-MOEHREN-10KG",
+            name: "Möhren, 10kg Sack",
+            neutral_article_id: 9, // Möhren
+            price: 12.50,
+            unit: "10kg Sack",
+            availability: "available", 
+            lead_time_days: 1,
+            nutrition: {
+                energy_kcal: 41,
+                protein: 0.9,
+                carbs: 9.6,
+                fat: 0.2
+            },
+            allergens: [],
+            organic: false,
+            tenant_id: 1,
+            status: "active"
+        },
+        
+        // Nudeln Penne - METRO
+        {
+            id: 1024,
+            supplier_id: 1, // METRO AG
+            article_number: "METRO-PENNE-5KG",
+            name: "Nudeln Penne, 5kg Karton",
+            neutral_article_id: 10, // Nudeln
+            price: 8.90,
+            unit: "5kg Karton",
+            availability: "available",
+            lead_time_days: 1,
+            nutrition: {
+                energy_kcal: 371,
+                protein: 13.0,
+                carbs: 74.0,
+                fat: 1.5
+            },
+            allergens: ["Gluten", "Ei"],
+            organic: false,
+            tenant_id: 1,
+            status: "active"
+        },
+        
+        // Butter - Molkerei Hansen
+        {
+            id: 1025,
+            supplier_id: 5, // Molkerei Hansen
+            article_number: "HANSEN-BUTTER-5KG",
+            name: "Butter, 5kg Block",
+            neutral_article_id: 11, // Butter
+            price: 32.50,
+            unit: "5kg Block",
+            availability: "available",
+            lead_time_days: 2,
+            nutrition: {
+                energy_kcal: 717,
+                protein: 0.7,
+                carbs: 0.6,
+                fat: 80.0
+            },
+            allergens: ["Milch"],
+            organic: false,
+            tenant_id: 1,
+            status: "active"
+        },
+        
+        // Milch 3,5% - Molkerei Hansen
+        {
+            id: 1026,
+            supplier_id: 5, // Molkerei Hansen
+            article_number: "HANSEN-MILCH-3-5",
+            name: "Milch 3,5%, 10L Kanister",
+            neutral_article_id: 12, // Milch
+            price: 9.50,
+            unit: "10L Kanister",
+            availability: "available",
+            lead_time_days: 1,
+            nutrition: {
+                energy_kcal: 65,
+                protein: 3.4,
+                carbs: 4.8,
+                fat: 3.8
+            },
+            allergens: ["Milch"],
+            organic: false,
+            tenant_id: 1,
+            status: "active"
         }
     ]
 };
