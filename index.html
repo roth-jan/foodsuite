@@ -15883,13 +15883,70 @@
         // Function to apply AI meal to plan
         window.applyAIMeal = function(index) {
             if (!window.currentAIMeals || !window.currentAIMeals[index]) return;
-            
+
             const meal = window.currentAIMeals[index];
             showToast(`${meal.name} wurde zum Speiseplan hinzugefügt`, 'success');
-            
+
             // Here you would add the meal to the actual meal plan
             // This is a placeholder - implement actual meal plan integration
         };
+
+        // CRITICAL FIX: Initialize Navigation Event Handlers
+        // This was missing and caused navigation to not work!
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 Initializing navigation event handlers...');
+
+            // Add click handlers to all navigation links
+            const navLinks = document.querySelectorAll('a[data-tab]');
+            console.log(`Found ${navLinks.length} navigation links`);
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const tabId = this.getAttribute('data-tab');
+                    console.log(`Navigation clicked: ${tabId}`);
+
+                    if (tabId && typeof showTab === 'function') {
+                        showTab(tabId);
+                    } else if (tabId) {
+                        // Fallback if showTab not available
+                        window.showTab(tabId);
+                    }
+                });
+            });
+
+            // Also initialize Bootstrap tabs for inventory sub-tabs
+            const bsTabs = document.querySelectorAll('[data-bs-toggle="tab"]');
+            bsTabs.forEach(tab => {
+                tab.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = this.getAttribute('data-bs-target');
+                    if (target) {
+                        // Hide all tab panes
+                        document.querySelectorAll('.tab-pane').forEach(pane => {
+                            pane.classList.remove('show', 'active');
+                        });
+                        // Show target pane
+                        const targetPane = document.querySelector(target);
+                        if (targetPane) {
+                            targetPane.classList.add('show', 'active');
+                        }
+                        // Update active tab
+                        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(t => {
+                            t.classList.remove('active');
+                        });
+                        this.classList.add('active');
+                    }
+                });
+            });
+
+            console.log('✅ Navigation event handlers initialized');
+
+            // Show dashboard on load
+            if (typeof showTab === 'function') {
+                showTab('dashboard');
+            }
+        });
     </script>
 
 </body>
