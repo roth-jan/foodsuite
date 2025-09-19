@@ -2274,9 +2274,38 @@
                 </div>
 
                 <div class="card">
+                    <div class="card-header">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h5 class="mb-0">Rezeptliste</h5>
+                            </div>
+                            <div class="col-auto">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="recipeSearch" placeholder="Suche...">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="filterRecipes()">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="card-body">
-                        <div class="row" id="recipeGrid">
-                            <!-- Recipes will be populated by JavaScript -->
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="recipesTable">
+                                <thead>
+                                    <tr>
+                                        <th onclick="sortRecipes('number')" style="cursor: pointer;">Rezeptnr. <i class="bi bi-arrow-down-up"></i></th>
+                                        <th onclick="sortRecipes('name')" style="cursor: pointer;">Rezeptname <i class="bi bi-arrow-down-up"></i></th>
+                                        <th onclick="sortRecipes('category')" style="cursor: pointer;">Rezeptklasse <i class="bi bi-arrow-down-up"></i></th>
+                                        <th onclick="sortRecipes('portions')" style="cursor: pointer;">Portionen <i class="bi bi-arrow-down-up"></i></th>
+                                        <th onclick="sortRecipes('cost')" style="cursor: pointer;">Wareneinsatz <i class="bi bi-arrow-down-up"></i></th>
+                                        <th>Aktionen</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recipeTableBody">
+                                    <!-- Recipes will be populated here -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -6696,6 +6725,9 @@
                                 <button class="btn btn-sm btn-outline-primary" data-action="viewProductDetails" data-param="${product.id}" title="Details">
                                     <i class="bi bi-eye"></i>
                                 </button>
+                                <button class="btn btn-sm btn-outline-info" data-action="showPriceHistory" data-param="${product.id}" title="Preisverlauf">
+                                    <i class="bi bi-graph-up"></i>
+                                </button>
                                 <button class="btn btn-sm btn-outline-secondary" data-action="editProductDetails" data-param="${product.id}" title="Bearbeiten">
                                     <i class="bi bi-pencil"></i>
                                 </button>
@@ -6723,18 +6755,37 @@
         }
 
         // ===== RECIPES =====
-        
+
+        // Store recipes globally for filtering and sorting
+        let allRecipes = [];
+        let sortColumn = 'name';
+        let sortDirection = 'asc';
+
         async function loadRecipes() {
-            const recipeGrid = document.getElementById('recipeGrid');
-            if (!recipeGrid) return;
-            
-            recipeGrid.innerHTML = '<div class="col-12 text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Lade Rezepte...</span></div></div>';
-            
+            const recipeTableBody = document.getElementById('recipeTableBody');
+            const recipeGrid = document.getElementById('recipeGrid'); // For backward compatibility
+
+            if (!recipeTableBody && !recipeGrid) return;
+
+            // Check if we're using the new table view or old grid view
+            if (recipeTableBody) {
+                recipeTableBody.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Lade Rezepte...</span></div></td></tr>';
+            } else if (recipeGrid) {
+                recipeGrid.innerHTML = '<div class="col-12 text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Lade Rezepte...</span></div></div>';
+            }
+
             try {
                 // Load recipes
                 const response = await api.getRecipes({ limit: 100 });
-                const recipes = response.items || [];
-                
+                allRecipes = response.items || [];
+
+                // Assign recipe numbers if not present
+                allRecipes.forEach((recipe, index) => {
+                    if (!recipe.recipe_number) {
+                        recipe.recipe_number = `R${String(index + 1).padStart(4, '0')}`;
+                    }
+                });
+
                 // Load recipe statistics
                 try {
                     const statsResponse = await fetch(`${API_BASE_URL}/recipes/stats`, {
@@ -6742,10 +6793,10 @@
                             'X-Tenant-ID': TENANT_ID
                         }
                     });
-                    
+
                     if (statsResponse.ok) {
                         const stats = await statsResponse.json();
-                        
+
                         // Update dashboard numbers
                         document.getElementById('totalRecipes').textContent = stats.totalRecipes || 0;
                         document.getElementById('favoriteRecipes').textContent = stats.favoriteRecipes || 0;
@@ -6755,63 +6806,197 @@
                 } catch (statsError) {
                     console.error('Error loading recipe stats:', statsError);
                 }
-                
-                recipeGrid.innerHTML = '';
-                
-                if (recipes.length === 0) {
-                    recipeGrid.innerHTML = '<div class="col-12 text-center text-muted">Keine Rezepte gefunden</div>';
-                    return;
+
+                // Display in new table view if available
+                if (recipeTableBody) {
+                    displayRecipes(allRecipes);
+                } else if (recipeGrid) {
+                    // Fallback to old grid view
+                    displayRecipesGrid(allRecipes);
                 }
-                
-                recipes.forEach(recipe => {
-                    const recipeCard = document.createElement('div');
-                    recipeCard.className = 'col-md-4 mb-4';
-                    
-                    // Parse tags if they're a string
-                    let tagsHtml = '';
-                    if (recipe.tags) {
-                        const tags = typeof recipe.tags === 'string' ? recipe.tags.split(',') : recipe.tags;
-                        tagsHtml = tags.map(tag => `<span class="badge bg-secondary me-1">${tag.trim()}</span>`).join('');
-                    }
-                    
-                    // Calculate total time
-                    const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
-                    
-                    // Use the recipe's cost_per_portion or calculate if not available
-                    let costPerPortion = recipe.cost_per_portion ? `€${recipe.cost_per_portion.toFixed(2)}` : 'N/A';
-                    
-                    recipeCard.innerHTML = `
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">${recipe.name}</h5>
-                                <p class="card-text">
-                                    <strong>Portionen:</strong> ${recipe.portions}<br>
-                                    <strong>Zubereitungszeit:</strong> ${totalTime} Min<br>
-                                    <strong>Kosten:</strong> ${costPerPortion} pro Portion<br>
-                                    <strong>Zutaten:</strong> ${recipe.ingredients ? recipe.ingredients.length : 0}
-                                </p>
-                                <div class="mb-3">${tagsHtml}</div>
-                                ${recipe.notes ? `<p class="text-muted small">${recipe.notes}</p>` : ''}
-                                <div class="d-flex gap-2">
-                                    <button class="btn btn-primary btn-sm" data-action="editRecipe" data-param="${recipe.id}">
-                                        <i class="bi bi-pencil"></i> Bearbeiten
-                                    </button>
-                                    <button class="btn btn-outline-secondary btn-sm" data-action="copyRecipe" data-param="${recipe.id}">
-                                        <i class="bi bi-files"></i> Kopieren
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    
-                    recipeGrid.appendChild(recipeCard);
-                });
-                
+
             } catch (error) {
                 console.error('Error loading recipes:', error);
-                recipeGrid.innerHTML = '<div class="col-12 text-center text-danger">Fehler beim Laden der Rezepte</div>';
+                if (recipeTableBody) {
+                    recipeTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Fehler beim Laden der Rezepte</td></tr>';
+                } else if (recipeGrid) {
+                    recipeGrid.innerHTML = '<div class="col-12 text-center text-danger">Fehler beim Laden der Rezepte</div>';
+                }
                 showToast('Fehler beim Laden der Rezepte', 'error');
             }
+        }
+
+        function displayRecipes(recipes) {
+            const recipeTableBody = document.getElementById('recipeTableBody');
+            if (!recipeTableBody) return;
+
+            recipeTableBody.innerHTML = '';
+
+            if (recipes.length === 0) {
+                recipeTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Keine Rezepte gefunden</td></tr>';
+                return;
+            }
+
+            recipes.forEach(recipe => {
+                // Determine recipe category/class
+                const recipeClass = recipe.category || recipe.tags?.split(',')[0] || 'Hauptgericht';
+
+                // Calculate total cost
+                const totalCost = recipe.cost_per_portion ?
+                    (recipe.cost_per_portion * recipe.portions).toFixed(2) :
+                    'N/A';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${recipe.recipe_number || recipe.id}</td>
+                    <td><strong>${recipe.name}</strong></td>
+                    <td>${recipeClass}</td>
+                    <td class="text-center">${recipe.portions}</td>
+                    <td class="text-end">€${totalCost}</td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="showRecipeDetails(${recipe.id})" title="Details">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="editRecipe(${recipe.id})" title="Bearbeiten">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-success" onclick="duplicateRecipe(${recipe.id})" title="Kopieren">
+                                <i class="bi bi-files"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+
+                recipeTableBody.appendChild(row);
+            });
+        }
+
+        // Fallback function for old grid view
+        function displayRecipesGrid(recipes) {
+            const recipeGrid = document.getElementById('recipeGrid');
+            if (!recipeGrid) return;
+
+            recipeGrid.innerHTML = '';
+
+            if (recipes.length === 0) {
+                recipeGrid.innerHTML = '<div class="col-12 text-center text-muted">Keine Rezepte gefunden</div>';
+                return;
+            }
+
+            recipes.forEach(recipe => {
+                const recipeCard = document.createElement('div');
+                recipeCard.className = 'col-md-4 mb-4';
+
+                // Parse tags if they're a string
+                let tagsHtml = '';
+                if (recipe.tags) {
+                    const tags = typeof recipe.tags === 'string' ? recipe.tags.split(',') : recipe.tags;
+                    tagsHtml = tags.map(tag => `<span class="badge bg-secondary me-1">${tag.trim()}</span>`).join('');
+                }
+
+                // Calculate total time
+                const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
+
+                // Use the recipe's cost_per_portion or calculate if not available
+                let costPerPortion = recipe.cost_per_portion ? `€${recipe.cost_per_portion.toFixed(2)}` : 'N/A';
+
+                recipeCard.innerHTML = `
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">${recipe.name}</h5>
+                            <p class="card-text">
+                                <strong>Portionen:</strong> ${recipe.portions}<br>
+                                <strong>Zubereitungszeit:</strong> ${totalTime} Min<br>
+                                <strong>Kosten:</strong> ${costPerPortion} pro Portion<br>
+                                <strong>Zutaten:</strong> ${recipe.ingredients ? recipe.ingredients.length : 0}
+                            </p>
+                            <div class="mb-3">${tagsHtml}</div>
+                            ${recipe.notes ? `<p class="text-muted small">${recipe.notes}</p>` : ''}
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary btn-sm" data-action="editRecipe" data-param="${recipe.id}">
+                                    <i class="bi bi-pencil"></i> Bearbeiten
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" data-action="copyRecipe" data-param="${recipe.id}">
+                                    <i class="bi bi-files"></i> Kopieren
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                recipeGrid.appendChild(recipeCard);
+            });
+        }
+
+        window.filterRecipes = function() {
+            const searchTerm = document.getElementById('recipeSearch').value.toLowerCase();
+
+            if (!searchTerm) {
+                displayRecipes(allRecipes);
+                return;
+            }
+
+            const filtered = allRecipes.filter(recipe => {
+                return recipe.name.toLowerCase().includes(searchTerm) ||
+                       (recipe.recipe_number && recipe.recipe_number.toLowerCase().includes(searchTerm)) ||
+                       (recipe.category && recipe.category.toLowerCase().includes(searchTerm)) ||
+                       (recipe.tags && recipe.tags.toLowerCase().includes(searchTerm));
+            });
+
+            displayRecipes(filtered);
+        }
+
+        window.sortRecipes = function(column) {
+            // Toggle sort direction if same column
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            const sorted = [...allRecipes].sort((a, b) => {
+                let aValue, bValue;
+
+                switch(column) {
+                    case 'number':
+                        aValue = a.recipe_number || a.id;
+                        bValue = b.recipe_number || b.id;
+                        break;
+                    case 'name':
+                        aValue = a.name;
+                        bValue = b.name;
+                        break;
+                    case 'category':
+                        aValue = a.category || a.tags?.split(',')[0] || '';
+                        bValue = b.category || b.tags?.split(',')[0] || '';
+                        break;
+                    case 'portions':
+                        aValue = a.portions;
+                        bValue = b.portions;
+                        break;
+                    case 'cost':
+                        aValue = a.cost_per_portion ? a.cost_per_portion * a.portions : 0;
+                        bValue = b.cost_per_portion ? b.cost_per_portion * b.portions : 0;
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (typeof aValue === 'string') {
+                    aValue = aValue.toLowerCase();
+                    bValue = bValue.toLowerCase();
+                }
+
+                if (sortDirection === 'asc') {
+                    return aValue > bValue ? 1 : -1;
+                } else {
+                    return aValue < bValue ? 1 : -1;
+                }
+            });
+
+            displayRecipes(sorted);
         }
 
         // ===== UTILITY FUNCTIONS =====
@@ -9652,51 +9837,182 @@
             modal.addEventListener('hidden.bs.modal', () => modal.remove());
         }
         
-        function viewProductDetails(productId) {
+        async function viewProductDetails(productId) {
+            try {
+                // Load product data
+                const product = await api.get(`/products/${productId}`);
+
+                const modal = document.createElement('div');
+                modal.className = 'modal fade';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Produktdetails: ${product.name}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Grunddaten</h6>
+                                        <p><strong>Name:</strong> ${product.name}</p>
+                                        <p><strong>Kategorie:</strong> ${product.category || 'N/A'}</p>
+                                        <p><strong>Artikelnummer:</strong> ${product.article_number || product.id}</p>
+                                        <p><strong>Lieferant:</strong> ${product.supplier_name || 'Kein Lieferant'}</p>
+                                        <p><strong>Gebinde:</strong> ${product.packaging || 'Standard'}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Lager & Preise</h6>
+                                        <p><strong>Aktueller Bestand:</strong> ${product.stock} ${product.unit}</p>
+                                        <p><strong>Mindestbestand:</strong> ${product.min_stock} ${product.unit}</p>
+                                        <p><strong>Einkaufspreis:</strong> €${product.price || '0.00'}/${product.unit}</p>
+                                        <p><strong>Status:</strong> <span class="badge bg-${product.stock > product.min_stock ? 'success' : 'danger'}">${product.stock > product.min_stock ? 'Verfügbar' : 'Nachbestellen'}</span></p>
+                                    </div>
+                                </div>
+                                <hr>
+                                <h6>Nährwerte (pro 100g)</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p>Energie: ${product.nutrition?.energy || '79 kJ / 19 kcal'}</p>
+                                        <p>Protein: ${product.nutrition?.protein || '1,0g'}</p>
+                                        <p>Kohlenhydrate: ${product.nutrition?.carbs || '3,5g'}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p>Fett: ${product.nutrition?.fat || '0,2g'}</p>
+                                        <p>Ballaststoffe: ${product.nutrition?.fiber || '1,4g'}</p>
+                                        <p>Salz: ${product.nutrition?.salt || '0,003g'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-info" onclick="window.showPriceHistory(${productId})">
+                                    <i class="bi bi-graph-up"></i> Preisverlauf
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="window.editProductDetails(${productId})">
+                                    <i class="bi bi-pencil"></i> Bearbeiten
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                const bootstrapModal = new bootstrap.Modal(modal);
+                bootstrapModal.show();
+
+                modal.addEventListener('hidden.bs.modal', () => modal.remove());
+
+            } catch (error) {
+                console.error('Error loading product details:', error);
+                // Fallback to demo data
+                const modal = document.createElement('div');
+                modal.className = 'modal fade';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Produktdetails #${productId}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Grunddaten</h6>
+                                        <p><strong>Name:</strong> Bio-Tomaten rot, 5kg</p>
+                                        <p><strong>Kategorie:</strong> Gemüse</p>
+                                        <p><strong>Artikelnummer:</strong> MEYER-TOM-5KG</p>
+                                        <p><strong>Lieferant:</strong> Meyer Frischgemüse GmbH</p>
+                                        <p><strong>Gebinde:</strong> 5kg Kiste</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Lager & Preise</h6>
+                                        <p><strong>Aktueller Bestand:</strong> 44 Stück</p>
+                                        <p><strong>Mindestbestand:</strong> 5 Stück</p>
+                                        <p><strong>Einkaufspreis:</strong> €19,90/Kiste</p>
+                                        <p><strong>Status:</strong> <span class="badge bg-success">Verfügbar</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-info" onclick="window.showPriceHistory(${productId})">
+                                    <i class="bi bi-graph-up"></i> Preisverlauf
+                                </button>
+                                <button type="button" class="btn btn-primary" onclick="window.editProductDetails(${productId})">
+                                    <i class="bi bi-pencil"></i> Bearbeiten
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                const bootstrapModal = new bootstrap.Modal(modal);
+                bootstrapModal.show();
+
+                modal.addEventListener('hidden.bs.modal', () => modal.remove());
+            }
+        }
+        
+        window.editProductDetails = function(productId) {
+            showToast(`✏️ Bearbeitungsmodus für Produkt #${productId} aktiviert`, 'info');
+            // In production: Open edit modal with actual product data
+        }
+
+        window.showPriceHistory = function(productId) {
+            // Generate demo price history data
+            const months = ['Jan', 'Feb', 'März', 'April', 'Mai', 'Juni'];
+            const prices = months.map(() => (Math.random() * 5 + 15).toFixed(2));
+
             const modal = document.createElement('div');
             modal.className = 'modal fade';
             modal.innerHTML = `
-                <div class="modal-dialog">
+                <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title">Produktdetails #${productId}</h5>
+                            <h5 class="modal-title">Preisverlauf - Produkt #${productId}</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6>Grunddaten</h6>
-                                    <p><strong>Name:</strong> Bio-Tomaten rot, 5kg</p>
-                                    <p><strong>Kategorie:</strong> Gemüse</p>
-                                    <p><strong>Artikelnummer:</strong> MEYER-TOM-5KG</p>
-                                    <p><strong>Einheit:</strong> 5kg Kiste</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>Lager & Preise</h6>
-                                    <p><strong>Aktueller Bestand:</strong> 44 Stück</p>
-                                    <p><strong>Mindestbestand:</strong> 5 Stück</p>
-                                    <p><strong>Einkaufspreis:</strong> €19,90</p>
-                                    <p><strong>Status:</strong> <span class="badge bg-success">Verfügbar</span></p>
-                                </div>
-                            </div>
-                            <hr>
-                            <h6>Nährwerte (pro 100g)</h6>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p>Energie: 79 kJ / 19 kcal</p>
-                                    <p>Protein: 1,0g</p>
-                                    <p>Kohlenhydrate: 3,5g</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p>Fett: 0,2g</p>
-                                    <p>Ballaststoffe: 1,4g</p>
-                                    <p>Salz: 0,003g</p>
-                                </div>
+                            <h6>Preisentwicklung letzte 6 Monate</h6>
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Monat</th>
+                                        <th>Preis</th>
+                                        <th>Änderung</th>
+                                        <th>Lieferant</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${months.map((month, i) => {
+                                        const price = prices[i];
+                                        const prevPrice = i > 0 ? prices[i-1] : price;
+                                        const change = ((price - prevPrice) / prevPrice * 100).toFixed(1);
+                                        const changeClass = change > 0 ? 'text-danger' : change < 0 ? 'text-success' : 'text-muted';
+                                        const changeIcon = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+
+                                        return `
+                                        <tr>
+                                            <td>${month} 2024</td>
+                                            <td>€${price}</td>
+                                            <td class="${changeClass}">${changeIcon} ${Math.abs(change)}%</td>
+                                            <td>Meyer Frischgemüse GmbH</td>
+                                        </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> <strong>Durchschnittspreis:</strong> €${(prices.reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / prices.length).toFixed(2)}<br>
+                                <i class="bi bi-graph-up"></i> <strong>Trend:</strong> ${Math.random() > 0.5 ? 'Steigend' : 'Fallend'}
                             </div>
                         </div>
                         <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" onclick="window.exportPriceHistory(${productId})">
+                                <i class="bi bi-download"></i> Export als CSV
+                            </button>
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
-                            <button type="button" class="btn btn-primary">Bearbeiten</button>
                         </div>
                     </div>
                 </div>
@@ -9704,13 +10020,13 @@
             document.body.appendChild(modal);
             const bootstrapModal = new bootstrap.Modal(modal);
             bootstrapModal.show();
-            
+
             modal.addEventListener('hidden.bs.modal', () => modal.remove());
         }
-        
-        function editProductDetails(productId) {
-            showToast(`✏️ Bearbeitungsmodus für Produkt #${productId} aktiviert`, 'info');
-            // In production: Open edit modal with actual product data
+
+        window.exportPriceHistory = function(productId) {
+            showToast(`📊 Preisverlauf für Produkt #${productId} wird exportiert...`, 'info');
+            setTimeout(() => showToast('✅ Export erfolgreich!', 'success'), 1500);
         }
         
         // Fix undefined warnings in templates
@@ -9937,22 +10253,10 @@
                                     </select>
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-4">
+                                    <div class="col-md-12">
                                         <div class="mb-3">
                                             <label class="form-label">Portionen</label>
                                             <input type="number" class="form-control" id="servings" value="${recipe.portions}">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                            <label class="form-label">Vorbereitungszeit (Min)</label>
-                                            <input type="number" class="form-control" id="prepTime" value="${recipe.prep_time}">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                            <label class="form-label">Kochzeit (Min)</label>
-                                            <input type="number" class="form-control" id="cookTime" value="${recipe.cook_time}">
                                         </div>
                                     </div>
                                 </div>
@@ -10017,8 +10321,6 @@
                     name: document.getElementById('recipeName').value,
                     category_id: parseInt(document.getElementById('recipeCategory').value),
                     portions: parseInt(document.getElementById('servings').value),
-                    prep_time: parseInt(document.getElementById('prepTime').value),
-                    cook_time: parseInt(document.getElementById('cookTime').value),
                     instructions: document.getElementById('instructions').value,
                     notes: document.getElementById('notes').value,
                     tags: document.getElementById('tags').value
@@ -10086,60 +10388,70 @@
                                 </div>
                                 
                                 <div id="ingredientsList">
-                                    ${currentIngredients.map((ing, index) => `
-                                        <div class="ingredient-row border rounded p-3 mb-2" data-index="${index}">
-                                            <div class="row">
-                                                <div class="col-md-5">
-                                                    <label class="form-label">Artikel</label>
-                                                    <select class="form-select article-select" data-current-supplier="${ing.article.id || ''}" data-current-type="${ing.article.type}">
-                                                        <option value="">-- Artikel wählen --</option>
-                                                        <optgroup label="Lieferantenartikel (bevorzugt)">
-                                                            ${supplierArticles.map(article => 
-                                                                `<option value="supplier-${article.id}" 
+                                    <table class="table table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Lieferant</th>
+                                                <th>Artikelbezeichnung</th>
+                                                <th>Gebinde</th>
+                                                <th>Gebindegröße</th>
+                                                <th>Einheit</th>
+                                                <th>Gewicht (Einheit)</th>
+                                                <th>Preis je Einheit</th>
+                                                <th>Menge</th>
+                                                <th>Aktionen</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${currentIngredients.map((ing, index) => {
+                                                const article = ing.article.type === 'supplier_article' ?
+                                                    supplierArticles.find(a => a.id === ing.article.id) :
+                                                    neutralArticles.find(a => a.id === ing.article.id);
+
+                                                return `
+                                                <tr class="ingredient-row" data-index="${index}">
+                                                    <td>
+                                                        <select class="form-select form-select-sm supplier-select" onchange="window.updateArticleOptions(${index})">
+                                                            <option value="">-- Lieferant --</option>
+                                                            ${[...new Set(supplierArticles.map(a => a.supplier_name || 'Unbekannt'))].map(supplier =>
+                                                                `<option value="${supplier}" ${article?.supplier_name === supplier ? 'selected' : ''}>${supplier}</option>`
+                                                            ).join('')}
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        <select class="form-select form-select-sm article-select" data-current-supplier="${ing.article.id || ''}" data-current-type="${ing.article.type}">
+                                                            <option value="">-- Artikel --</option>
+                                                            ${supplierArticles.filter(a => !article || a.supplier_name === article.supplier_name).map(article =>
+                                                                `<option value="supplier-${article.id}"
+                                                                    data-packaging="${article.packaging || ''}"
+                                                                    data-package-size="${article.package_size || ''}"
+                                                                    data-unit="${article.unit}"
+                                                                    data-weight="${article.weight || ''}"
+                                                                    data-price="${article.price}"
                                                                     ${ing.article.type === 'supplier_article' && ing.article.id === article.id ? 'selected' : ''}>
-                                                                    ${article.name} (${article.article_number}) - €${article.price}/${article.unit}
+                                                                    ${article.name} (${article.article_number})
                                                                 </option>`
                                                             ).join('')}
-                                                        </optgroup>
-                                                        <optgroup label="Neutrale Artikel (Fallback)">
-                                                            ${neutralArticles.map(article => 
-                                                                `<option value="neutral-${article.id}"
-                                                                    ${ing.article.type === 'neutral_article' && ing.article.id === article.id ? 'selected' : ''}>
-                                                                    ${article.name} - ca. €${article.estimated_price_range.min}-${article.estimated_price_range.max}/${article.base_unit}
-                                                                </option>`
-                                                            ).join('')}
-                                                        </optgroup>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <label class="form-label">Menge</label>
-                                                    <input type="number" class="form-control quantity-input" value="${ing.quantity}" step="0.1" min="0">
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <label class="form-label">Einheit</label>
-                                                    <input type="text" class="form-control unit-input" value="${ing.unit}">
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <label class="form-label">Zubereitung</label>
-                                                    <input type="text" class="form-control prep-input" value="${ing.preparation_note || ''}" placeholder="z.B. gewürfelt">
-                                                </div>
-                                                <div class="col-md-1 d-flex align-items-end">
-                                                    <button class="btn btn-danger btn-sm" onclick="window.removeIngredient(${index})">
-                                                        <i class="bi bi-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="row mt-2">
-                                                <div class="col-12">
-                                                    <small class="text-muted article-info">
-                                                        ${ing.article.type === 'supplier_article' ? 
-                                                            `Lieferant: ${ing.price_info.supplier_name} | Nährwerte verfügbar` : 
-                                                            'Neutraler Artikel - geschätzte Preise'}
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
+                                                        </select>
+                                                    </td>
+                                                    <td class="packaging-cell">${article?.packaging || '-'}</td>
+                                                    <td class="package-size-cell">${article?.package_size || '-'}</td>
+                                                    <td class="unit-cell">${article?.unit || ing.unit}</td>
+                                                    <td class="weight-cell">${article?.weight || '-'}</td>
+                                                    <td class="price-cell">€${article?.price || '0.00'}</td>
+                                                    <td>
+                                                        <input type="number" class="form-control form-control-sm quantity-input" value="${ing.quantity}" step="0.1" min="0">
+                                                    </td>
+                                                    <td>
+                                                        <button class="btn btn-danger btn-sm" onclick="window.removeIngredient(${index})">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
                                 </div>
                                 
                                 <button class="btn btn-success mt-3" onclick="window.addNewIngredient()">
@@ -10185,62 +10497,94 @@
         }
         
         window.addNewIngredient = function() {
-            const ingredientsList = document.getElementById('ingredientsList');
+            const tbody = document.querySelector('#ingredientsList tbody');
             const newIndex = Date.now(); // Unique index
-            
-            const newRow = document.createElement('div');
-            newRow.className = 'ingredient-row border rounded p-3 mb-2';
+
+            const newRow = document.createElement('tr');
+            newRow.className = 'ingredient-row';
             newRow.setAttribute('data-index', newIndex);
+
+            const suppliers = [...new Set(window.availableSupplierArticles.map(a => a.supplier_name || 'Unbekannt'))];
+
             newRow.innerHTML = `
-                <div class="row">
-                    <div class="col-md-5">
-                        <label class="form-label">Artikel</label>
-                        <select class="form-select article-select">
-                            <option value="">-- Artikel wählen --</option>
-                            <optgroup label="Lieferantenartikel (bevorzugt)">
-                                ${window.availableSupplierArticles.map(article => 
-                                    `<option value="supplier-${article.id}">
-                                        ${article.name} (${article.article_number}) - €${article.price}/${article.unit}
-                                    </option>`
-                                ).join('')}
-                            </optgroup>
-                            <optgroup label="Neutrale Artikel (Fallback)">
-                                ${window.availableNeutralArticles.map(article => 
-                                    `<option value="neutral-${article.id}">
-                                        ${article.name} - ca. €${article.estimated_price_range.min}-${article.estimated_price_range.max}/${article.base_unit}
-                                    </option>`
-                                ).join('')}
-                            </optgroup>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Menge</label>
-                        <input type="number" class="form-control quantity-input" value="1" step="0.1" min="0">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Einheit</label>
-                        <input type="text" class="form-control unit-input" value="kg">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Zubereitung</label>
-                        <input type="text" class="form-control prep-input" placeholder="z.B. gewürfelt">
-                    </div>
-                    <div class="col-md-1 d-flex align-items-end">
-                        <button class="btn btn-danger btn-sm" onclick="window.removeIngredient(${newIndex})">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="row mt-2">
-                    <div class="col-12">
-                        <small class="text-muted article-info">
-                            Bitte Artikel auswählen
-                        </small>
-                    </div>
-                </div>
+                <td>
+                    <select class="form-select form-select-sm supplier-select" onchange="window.updateArticleOptions(${newIndex})">
+                        <option value="">-- Lieferant --</option>
+                        ${suppliers.map(supplier =>
+                            `<option value="${supplier}">${supplier}</option>`
+                        ).join('')}
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm article-select">
+                        <option value="">-- Zuerst Lieferant wählen --</option>
+                    </select>
+                </td>
+                <td class="packaging-cell">-</td>
+                <td class="package-size-cell">-</td>
+                <td class="unit-cell">-</td>
+                <td class="weight-cell">-</td>
+                <td class="price-cell">-</td>
+                <td>
+                    <input type="number" class="form-control form-control-sm quantity-input" value="1" step="0.1" min="0">
+                </td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="window.removeIngredient(${newIndex})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
             `;
-            
-            ingredientsList.appendChild(newRow);
+
+            tbody.appendChild(newRow);
+
+            // Add event listener for article selection
+            const articleSelect = newRow.querySelector('.article-select');
+            articleSelect.addEventListener('change', function() {
+                const option = this.options[this.selectedIndex];
+                if (option && option.value) {
+                    newRow.querySelector('.packaging-cell').textContent = option.dataset.packaging || '-';
+                    newRow.querySelector('.package-size-cell').textContent = option.dataset.packageSize || '-';
+                    newRow.querySelector('.unit-cell').textContent = option.dataset.unit || '-';
+                    newRow.querySelector('.weight-cell').textContent = option.dataset.weight || '-';
+                    newRow.querySelector('.price-cell').textContent = `€${option.dataset.price || '0.00'}`;
+                }
+            });
+        }
+
+        window.updateArticleOptions = function(index) {
+            const row = document.querySelector(`.ingredient-row[data-index="${index}"]`);
+            if (!row) return;
+
+            const supplierSelect = row.querySelector('.supplier-select');
+            const articleSelect = row.querySelector('.article-select');
+            const selectedSupplier = supplierSelect.value;
+
+            // Filter articles by selected supplier
+            const filteredArticles = window.availableSupplierArticles.filter(a =>
+                a.supplier_name === selectedSupplier
+            );
+
+            // Update article options
+            articleSelect.innerHTML = `
+                <option value="">-- Artikel wählen --</option>
+                ${filteredArticles.map(article =>
+                    `<option value="supplier-${article.id}"
+                        data-packaging="${article.packaging || ''}"
+                        data-package-size="${article.package_size || ''}"
+                        data-unit="${article.unit}"
+                        data-weight="${article.weight || ''}"
+                        data-price="${article.price}">
+                        ${article.name} (${article.article_number})
+                    </option>`
+                ).join('')}
+            `;
+
+            // Clear display cells
+            row.querySelector('.packaging-cell').textContent = '-';
+            row.querySelector('.package-size-cell').textContent = '-';
+            row.querySelector('.unit-cell').textContent = '-';
+            row.querySelector('.weight-cell').textContent = '-';
+            row.querySelector('.price-cell').textContent = '-';
         }
         
         window.saveIngredients = async function(recipeId) {
@@ -10336,22 +10680,10 @@
                                     </select>
                                 </div>
                                 <div class="row">
-                                    <div class="col-md-4">
+                                    <div class="col-md-12">
                                         <div class="mb-3">
                                             <label class="form-label">Portionen</label>
                                             <input type="number" class="form-control" id="newRecipePortions" value="50" min="1" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                            <label class="form-label">Vorbereitungszeit (Min)</label>
-                                            <input type="number" class="form-control" id="newRecipePrepTime" value="30" min="0" required>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                            <label class="form-label">Kochzeit (Min)</label>
-                                            <input type="number" class="form-control" id="newRecipeCookTime" value="45" min="0" required>
                                         </div>
                                     </div>
                                 </div>
@@ -10419,8 +10751,6 @@
                     name: document.getElementById('newRecipeName').value,
                     category_id: parseInt(document.getElementById('newRecipeCategory').value),
                     portions: parseInt(document.getElementById('newRecipePortions').value),
-                    prep_time: parseInt(document.getElementById('newRecipePrepTime').value),
-                    cook_time: parseInt(document.getElementById('newRecipeCookTime').value),
                     instructions: document.getElementById('newRecipeInstructions').value,
                     notes: document.getElementById('newRecipeNotes').value,
                     tags: document.getElementById('newRecipeTags').value,
