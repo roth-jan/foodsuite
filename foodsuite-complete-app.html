@@ -2473,10 +2473,10 @@
                                             <tr>
                                                 <th>Produkt</th>
                                                 <th>Lagerort</th>
-                                                <th>Bestand</th>
-                                                <th>Mindestbestand</th>
-                                                <th>Füllstand</th>
-                                                <th>Wert</th>
+                                                <th>Gebinde</th>
+                                                <th>Einheiten</th>
+                                                <th>Preis je Einheit</th>
+                                                <th>Gesamtwert</th>
                                                 <th>Aktionen</th>
                                             </tr>
                                         </thead>
@@ -2960,7 +2960,7 @@
 
     <!-- Create Product Modal -->
     <div class="modal fade" id="createProductModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Neues Produkt anlegen</h5>
@@ -2990,8 +2990,70 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label">Einheit</label>
-                                    <input type="text" class="form-control" id="productUnit" placeholder="kg, L, Stück...">
+                                    <label class="form-label">Lieferant</label>
+                                    <select class="form-select" id="productSupplier">
+                                        <option value="">Lieferant wählen...</option>
+                                        <option value="1">METRO AG</option>
+                                        <option value="2">Transgourmet Deutschland</option>
+                                        <option value="3">Bäckerei Schmidt</option>
+                                        <option value="4">Metzgerei Wagner</option>
+                                        <option value="5">Bio-Frische GmbH</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Einheit *</label>
+                                    <select class="form-select" id="productUnit" required>
+                                        <option value="">Einheit wählen...</option>
+                                        <option value="kg">Kilogramm (kg)</option>
+                                        <option value="g">Gramm (g)</option>
+                                        <option value="l">Liter (l)</option>
+                                        <option value="ml">Milliliter (ml)</option>
+                                        <option value="Stück">Stück</option>
+                                        <option value="Packung">Packung</option>
+                                        <option value="Karton">Karton</option>
+                                        <option value="Palette">Palette</option>
+                                        <option value="Dose">Dose</option>
+                                        <option value="Glas">Glas</option>
+                                        <option value="Flasche">Flasche</option>
+                                        <option value="Beutel">Beutel</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Gebinde *</label>
+                                    <select class="form-select" id="productPackaging" required>
+                                        <option value="">Gebinde wählen...</option>
+                                        <option value="Einzeln">Einzeln</option>
+                                        <option value="6er Pack">6er Pack</option>
+                                        <option value="12er Pack">12er Pack</option>
+                                        <option value="24er Pack">24er Pack</option>
+                                        <option value="Kiste">Kiste</option>
+                                        <option value="Karton">Karton</option>
+                                        <option value="Palette">Palette</option>
+                                        <option value="Sack">Sack</option>
+                                        <option value="Eimer">Eimer</option>
+                                        <option value="Fass">Fass</option>
+                                        <option value="Container">Container</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Artikelgewicht *</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="productWeight" step="0.01" min="0" required>
+                                        <select class="form-select" id="productWeightUnit" style="max-width: 100px;">
+                                            <option value="kg">kg</option>
+                                            <option value="g">g</option>
+                                            <option value="l">l</option>
+                                            <option value="ml">ml</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3004,36 +3066,35 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label">Lieferant</label>
-                                    <select class="form-select" id="productSupplier">
-                                        <option value="">Lieferant wählen...</option>
+                                    <label class="form-label">Lagerort *</label>
+                                    <select class="form-select" id="productLocation" required>
+                                        <option value="">Lagerort wählen...</option>
+                                        <option value="Kühlhaus A">Kühlhaus A</option>
+                                        <option value="Kühlhaus B">Kühlhaus B</option>
+                                        <option value="Tiefkühllager">Tiefkühllager</option>
+                                        <option value="Trockenlager 1">Trockenlager 1</option>
+                                        <option value="Trockenlager 2">Trockenlager 2</option>
+                                        <option value="Getränkelager">Getränkelager</option>
+                                        <option value="Gewürzschrank">Gewürzschrank</option>
+                                        <option value="Frischelager">Frischelager</option>
+                                        <option value="Außenlager">Außenlager</option>
                                     </select>
                                 </div>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Lagerbestand</label>
                                     <input type="number" class="form-control" id="productStock" min="0">
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="mb-3">
                                     <label class="form-label">Min. Bestand</label>
                                     <input type="number" class="form-control" id="productMinStock" min="0">
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label">Max. Bestand</label>
-                                    <input type="number" class="form-control" id="productMaxStock" min="0">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Lagerort</label>
-                            <input type="text" class="form-control" id="productLocation" placeholder="Kühlhaus, Trockenlager...">
                         </div>
                     </form>
                 </div>
@@ -7880,58 +7941,41 @@
         async function loadInventory() {
             const tbody = document.getElementById('inventoryTableBody');
             if (!tbody) return;
-            
+
             tbody.innerHTML = '<tr><td colspan="7" class="text-center">Lade Inventar...</td></tr>';
-            
+
             try {
                 const response = await api.get('/inventory?limit=100');
                 const products = response.items || [];
-                
+
                 // Debug-Log
                 console.log('Inventory Response:', response);
-                
+
                 tbody.innerHTML = '';
-                
+
                 if (products.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Keine Produkte im Inventar gefunden</td></tr>';
                     return;
                 }
-                
+
                 products.forEach(product => {
                     const row = document.createElement('tr');
-                    
-                    // Calculate stock status
-                    let stockStatus = 'success';
-                    let stockText = 'Ausreichend';
-                    
-                    if (product.stock <= 0) {
-                        stockStatus = 'danger';
-                        stockText = 'Ausverkauft';
-                    } else if (product.stock < product.min_stock) {
-                        stockStatus = 'warning';
-                        stockText = 'Niedrig';
-                    } else if (product.stock < product.min_stock * 2) {
-                        stockStatus = 'info';
-                        stockText = 'Mittel';
-                    }
-                    
-                    // Calculate stock percentage for progress bar
-                    const stockPercent = Math.min(100, (product.stock / (product.max_stock || product.min_stock * 3)) * 100);
+
+                    // Calculate packaging and units
+                    const packaging = product.packaging || 'Karton';
+                    const packageSize = product.package_size || 12;
+                    const packages = Math.floor(product.stock / packageSize);
+                    const units = product.stock % packageSize;
+                    const pricePerUnit = product.price || 0;
+                    const totalValue = product.stock * pricePerUnit;
                     
                     row.innerHTML = `
                         <td><strong>${product.name}</strong></td>
-                        <td>${product.storage_location || 'Nicht angegeben'}</td>
-                        <td>${product.stock} ${product.unit}</td>
-                        <td>${product.min_stock} ${product.unit}</td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="progress me-2" style="width: 60px; height: 8px;">
-                                    <div class="progress-bar bg-${stockStatus}" style="width: ${stockPercent}%"></div>
-                                </div>
-                                <span class="badge bg-${stockStatus}">${stockText}</span>
-                            </div>
-                        </td>
-                        <td>€${product.value ? product.value.toFixed(2) : '0.00'}</td>
+                        <td>${product.location || product.storage_location || 'Hauptlager'}</td>
+                        <td>${packages} ${packaging}</td>
+                        <td>${units} ${product.unit}</td>
+                        <td>€${pricePerUnit.toFixed(2)}/${product.unit}</td>
+                        <td>€${totalValue.toFixed(2)}</td>
                         <td>
                             <div class="table-actions">
                                 <button class="btn btn-sm btn-outline-primary" data-action="updateStock" data-param="${product.id}" title="Bestand ändern">
@@ -9010,7 +9054,7 @@
         }
         
         window.createManualGoodsReceipt = function() {
-            // Create comprehensive manual goods receipt form
+            // Create simplified manual goods receipt form
             const modal = document.createElement('div');
             modal.className = 'modal fade';
             modal.innerHTML = `
@@ -9043,26 +9087,15 @@
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label class="form-label">Lieferdatum</label>
-                                            <input type="date" class="form-control" id="manualDeliveryDate" 
+                                            <input type="date" class="form-control" id="manualDeliveryDate"
                                                    value="${new Date().toISOString().split('T')[0]}">
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label class="form-label">Lieferschein-Nr.</label>
-                                            <input type="text" class="form-control" id="manualDeliveryNote" placeholder="Optional">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label class="form-label">Empfänger</label>
-                                            <input type="text" class="form-control" id="manualReceiver" 
-                                                   value="Admin" placeholder="Wer hat den Wareneingang entgegengenommen?">
-                                        </div>
-                                    </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Lieferschein-Nr.</label>
+                                    <input type="text" class="form-control" id="manualDeliveryNote" placeholder="Optional">
                                 </div>
                                 
                                 <hr>
