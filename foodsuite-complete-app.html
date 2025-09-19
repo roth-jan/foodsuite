@@ -5383,10 +5383,14 @@
                     loadAnalytics();
                     break;
                 case 'invoices':
-                    loadInvoices();
+                    if (typeof loadInvoices === 'function') {
+                        loadInvoices();
+                    }
                     break;
                 case 'customers':
-                    loadCustomers();
+                    if (typeof loadCustomers === 'function') {
+                        loadCustomers();
+                    }
                     break;
                 default:
                     console.log(`Loading tab: ${tabId}`);
@@ -13496,11 +13500,16 @@
             setTimeout(() => {
                 console.log('🔄 Preloading all data...');
                 loadProducts();
-                loadSuppliers(); 
+                loadSuppliers();
                 loadOrders();
                 loadInventory();
-                loadInvoices();
-                loadCustomers();
+                // Check if functions exist before calling
+                if (typeof loadInvoices === 'function') {
+                    loadInvoices();
+                }
+                if (typeof loadCustomers === 'function') {
+                    loadCustomers();
+                }
                 showToast('🎉 FoodSuite Pro geladen! Alle Features verfügbar.', 'success');
             }, 1000);
         });
