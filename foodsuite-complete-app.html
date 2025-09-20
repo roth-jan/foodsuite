@@ -2240,7 +2240,7 @@
                             <div class="card-body">
                                 <i class="bi bi-book fs-1 text-primary"></i>
                                 <h5 class="card-title mt-2">Rezepte</h5>
-                                <h3 class="text-primary" id="totalRecipes">127</h3>
+                                <h3 class="text-primary" id="totalRecipes">0</h3>
                             </div>
                         </div>
                     </div>
@@ -2249,7 +2249,7 @@
                             <div class="card-body">
                                 <i class="bi bi-heart fs-1 text-danger"></i>
                                 <h5 class="card-title mt-2">Favoriten</h5>
-                                <h3 class="text-danger" id="favoriteRecipes">23</h3>
+                                <h3 class="text-danger" id="favoriteRecipes">0</h3>
                             </div>
                         </div>
                     </div>
@@ -2258,7 +2258,7 @@
                             <div class="card-body">
                                 <i class="bi bi-people fs-1 text-success"></i>
                                 <h5 class="card-title mt-2">Ø Portionen</h5>
-                                <h3 class="text-success" id="averagePortions">45</h3>
+                                <h3 class="text-success" id="averagePortions">0</h3>
                             </div>
                         </div>
                     </div>
@@ -2267,7 +2267,7 @@
                             <div class="card-body">
                                 <i class="bi bi-currency-euro fs-1 text-warning"></i>
                                 <h5 class="card-title mt-2">Ø Kosten</h5>
-                                <h3 class="text-warning" id="averageCost">€3.45</h3>
+                                <h3 class="text-warning" id="averageCost">€0.00</h3>
                             </div>
                         </div>
                     </div>
@@ -6851,26 +6851,31 @@
                     }
                 });
 
-                // Load recipe statistics
-                try {
-                    const statsResponse = await fetch(`${API_BASE_URL}/recipes/stats`, {
-                        headers: {
-                            'X-Tenant-ID': TENANT_ID
-                        }
-                    });
+                // Calculate recipe statistics from loaded data
+                const totalRecipes = allRecipes.length;
+                const favoriteRecipes = allRecipes.filter(r => r.is_favorite).length;
 
-                    if (statsResponse.ok) {
-                        const stats = await statsResponse.json();
+                // Calculate average portions
+                const totalPortions = allRecipes.reduce((sum, r) => sum + (r.portions || 0), 0);
+                const averagePortions = totalRecipes > 0 ? Math.round(totalPortions / totalRecipes) : 0;
 
-                        // Update dashboard numbers
-                        document.getElementById('totalRecipes').textContent = stats.totalRecipes || 0;
-                        document.getElementById('favoriteRecipes').textContent = stats.favoriteRecipes || 0;
-                        document.getElementById('averagePortions').textContent = stats.averagePortions || 0;
-                        document.getElementById('averageCost').textContent = `€${stats.averageCost || '0.00'}`;
-                    }
-                } catch (statsError) {
-                    console.error('Error loading recipe stats:', statsError);
-                }
+                // Calculate average cost
+                const recipesWithCost = allRecipes.filter(r => r.cost_per_portion && r.cost_per_portion > 0);
+                const totalCost = recipesWithCost.reduce((sum, r) => sum + parseFloat(r.cost_per_portion || 0), 0);
+                const averageCost = recipesWithCost.length > 0 ? (totalCost / recipesWithCost.length).toFixed(2) : '0.00';
+
+                // Update dashboard numbers with real data
+                const totalRecipesEl = document.getElementById('totalRecipes');
+                const favoriteRecipesEl = document.getElementById('favoriteRecipes');
+                const averagePortionsEl = document.getElementById('averagePortions');
+                const averageCostEl = document.getElementById('averageCost');
+
+                if (totalRecipesEl) totalRecipesEl.textContent = totalRecipes;
+                if (favoriteRecipesEl) favoriteRecipesEl.textContent = favoriteRecipes;
+                if (averagePortionsEl) averagePortionsEl.textContent = averagePortions;
+                if (averageCostEl) averageCostEl.textContent = `€${averageCost}`;
+
+                console.log(`Loaded ${totalRecipes} recipes, avg ${averagePortions} portions, avg cost €${averageCost}`);
 
                 // Display in new table view if available
                 if (recipeTableBody) {
