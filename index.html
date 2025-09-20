@@ -15896,6 +15896,56 @@
             // This is a placeholder - implement actual meal plan integration
         };
 
+        // Main navigation function
+        function showTab(tabId) {
+            console.log('Showing tab:', tabId);
+
+            // Hide all tab panes
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('show', 'active');
+            });
+
+            // Show selected tab
+            const selectedTab = document.getElementById(tabId);
+            if (selectedTab) {
+                selectedTab.classList.add('show', 'active');
+
+                // Load data based on tab
+                switch(tabId) {
+                    case 'dashboard':
+                        loadDashboard();
+                        break;
+                    case 'recipes':
+                        loadRecipes();
+                        break;
+                    case 'products':
+                        loadProducts();
+                        break;
+                    case 'suppliers':
+                        loadSuppliers();
+                        break;
+                    case 'inventory':
+                        loadInventory();
+                        break;
+                    case 'orders':
+                        loadOrders();
+                        break;
+                    case 'price-monitoring':
+                        loadPriceMonitoring();
+                        break;
+                    case 'analytics':
+                        loadAnalytics();
+                        break;
+                    case 'settings':
+                        loadSettings();
+                        break;
+                }
+            }
+        }
+
+        // Make showTab globally available
+        window.showTab = showTab;
+
         // CRITICAL FIX: Initialize Navigation Event Handlers
         // This was missing and caused navigation to not work!
         document.addEventListener('DOMContentLoaded', function() {
