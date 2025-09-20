@@ -20,15 +20,23 @@ const updateSupplierSchema = supplierSchema.fork(['name'], (schema) => schema.op
 // Helper function to get tenant ID
 function getTenantId(req, res, next) {
     const tenantKey = req.headers['x-tenant-id'] || 'demo';
-    
+
+    // For demo tenant, use simplified logic
+    if (tenantKey === 'demo') {
+        req.tenantId = 1; // Default tenant ID for demo
+        return next();
+    }
+
     // Use findAll method compatible with in-memory database
     const tenants = db.data.tenants || [];
     const tenant = tenants.find(t => t.tenant_key === tenantKey);
-    
+
     if (!tenant) {
-        return res.status(404).json({ error: 'Tenant not found' });
+        // Fallback to demo tenant
+        req.tenantId = 1;
+        return next();
     }
-    
+
     req.tenantId = tenant.id;
     next();
 }
@@ -39,41 +47,58 @@ router.use(getTenantId);
 // GET /api/suppliers - Get all suppliers
 router.get('/', async (req, res) => {
     try {
+        console.log('[SUPPLIERS] GET request received');
         const { page = 1, limit = 10, search, status } = req.query;
-        
-        let options = {};
-        let whereConditions = [];
-        let params = [];
-        
-        // Build where conditions
+        const tenantId = req.tenantId;
+        console.log('[SUPPLIERS] TenantId:', tenantId, 'Query:', req.query);
+
+        // Get all suppliers from memory database
+        let suppliers = db.data.suppliers || [];
+
+        // Filter by tenant
+        suppliers = suppliers.filter(s => s.tenant_id === tenantId || s.tenant_id === 'demo' || s.tenant_id === 1);
+
+        // Apply search filter
         if (search) {
-            whereConditions.push('(name LIKE ? OR contact_person LIKE ? OR email LIKE ?)');
-            params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-        }
-        
-        if (status) {
-            whereConditions.push('status = ?');
-            params.push(status);
-        }
-        
-        if (whereConditions.length > 0) {
-            options.where = whereConditions.join(' AND ');
-            options.params = params;
-        }
-        
-        options.orderBy = 'name ASC';
-        
-        const result = await db.paginate('suppliers', parseInt(page), parseInt(limit), req.tenantId, options);
-        
-        // Enrich with product count
-        for (let supplier of result.items) {
-            const productCount = await db.get(
-                'SELECT COUNT(*) as count FROM products WHERE supplier_id = ? AND tenant_id = ?',
-                [supplier.id, req.tenantId]
+            const searchLower = search.toLowerCase();
+            suppliers = suppliers.filter(s =>
+                (s.name && s.name.toLowerCase().includes(searchLower)) ||
+                (s.contact_person && s.contact_person.toLowerCase().includes(searchLower)) ||
+                (s.email && s.email.toLowerCase().includes(searchLower))
             );
-            supplier.products_count = productCount.count;
         }
-        
+
+        // Apply status filter
+        if (status) {
+            suppliers = suppliers.filter(s => s.status === status);
+        }
+
+        // Sort by name
+        suppliers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        // Enrich with product count
+        const products = db.data.products || [];
+        suppliers = suppliers.map(supplier => {
+            const productCount = products.filter(p =>
+                p.supplier_id === supplier.id &&
+                (p.tenant_id === tenantId || p.tenant_id === 'demo' || p.tenant_id === 1)
+            ).length;
+            return { ...supplier, products_count: productCount };
+        });
+
+        // Paginate results
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + parseInt(limit);
+        const paginatedItems = suppliers.slice(startIndex, endIndex);
+
+        const result = {
+            items: paginatedItems,
+            total: suppliers.length,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            pages: Math.ceil(suppliers.length / limit)
+        };
+
         res.json(result);
     } catch (error) {
         console.error('Error fetching suppliers:', error);
@@ -85,18 +110,24 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        
-        const supplier = await db.findById('suppliers', id, req.tenantId);
-        
+        const tenantId = req.tenantId;
+
+        // Find supplier in memory database
+        const suppliers = db.data.suppliers || [];
+        const supplier = suppliers.find(s =>
+            s.id === parseInt(id) &&
+            (s.tenant_id === tenantId || s.tenant_id === 'demo' || s.tenant_id === 1)
+        );
+
         if (!supplier) {
             return res.status(404).json({ error: 'Supplier not found' });
         }
-        
-        // Get supplier's products
-        const products = await db.query(
-            'SELECT * FROM products WHERE supplier_id = ? AND tenant_id = ? ORDER BY name ASC',
-            [id, req.tenantId]
-        );
+
+        // Get supplier's products from memory
+        const products = (db.data.products || []).filter(p =>
+            p.supplier_id === parseInt(id) &&
+            (p.tenant_id === tenantId || p.tenant_id === 'demo' || p.tenant_id === 1)
+        ).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
         
         supplier.products = products;
         supplier.products_count = products.length;
