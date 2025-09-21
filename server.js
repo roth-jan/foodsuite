@@ -177,6 +177,10 @@ app.use('/api/health', require('./routes/health'));
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/customers', customerRoutes);
 
+// Business Logic Integration
+const businessLogicRoutes = require('./routes/business-logic');
+app.use(businessLogicRoutes);
+
 // Enhanced error handling middleware with health monitoring
 app.use((err, req, res, next) => {
     // Log error to health monitor
