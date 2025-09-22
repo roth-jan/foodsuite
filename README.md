@@ -99,4 +99,4 @@ The API is RESTful and uses JWT authentication. Base URL: `/api`
 
 ## License
 
-MIT License - see LICENSE file for details
+MIT License - see LICENSE file for details# Deploy Trigger Mo 22 Sep 2025 09:33:19 CEST
