@@ -15904,8 +15904,8 @@
         function showTab(tabId) {
             console.log('Showing tab:', tabId);
 
-            // Hide all tab panes
-            document.querySelectorAll('.tab-pane').forEach(pane => {
+            // Hide all tab panes AND tab-content (both class types exist!)
+            document.querySelectorAll('.tab-pane, .tab-content').forEach(pane => {
                 pane.classList.remove('show', 'active');
             });
 
