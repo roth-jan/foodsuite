@@ -15947,8 +15947,14 @@
             }
         }
 
-        // Make showTab globally available
+        // Make functions globally available
         window.showTab = showTab;
+        window.loadRecipes = loadRecipes;
+        window.loadProducts = loadProducts;
+        window.loadInventory = loadInventory;
+        window.loadSuppliers = loadSuppliers;
+        window.loadDashboard = loadDashboard;
+        window.loadAnalytics = loadAnalytics;
 
         // CRITICAL FIX: Initialize Navigation Event Handlers
         // This was missing and caused navigation to not work!
