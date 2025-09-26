@@ -2,8 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# FoodSuite - Professional Kitchen Management System
-
 ## Project Overview
 FoodSuite is a multi-tenant SaaS for professional kitchen management. Single-page HTML frontend + Node.js/Express backend on port 3005.
 
@@ -12,7 +10,7 @@ FoodSuite is a multi-tenant SaaS for professional kitchen management. Single-pag
 ```bash
 # Development
 node server.js                    # Memory DB (default)
-npm run dev                       # Auto-reload with nodemon  
+npm run dev                       # Auto-reload with nodemon
 npm run staging                   # Staging environment (PostgreSQL)
 npm run prod                      # Production environment (PostgreSQL)
 
@@ -22,9 +20,9 @@ npm run seed-db                   # Initial data
 node scripts/update-realistic-inventory.js  # Realistic inventory data
 
 # Business Logic Testing
-node test-direct-api.js           # Complete business logic validation
 node scripts/map-products-to-articles.js  # Product-article mapping verification
-npx playwright test test-business-simple.spec.js  # UI business logic tests
+npx playwright test tests/api/business-logic.spec.js  # API business logic tests
+npx playwright test tests/e2e/*.spec.js  # UI E2E tests
 
 # Production Operations
 npm run deploy:staging           # Deploy to staging environment
@@ -36,7 +34,7 @@ npm run health                   # System health check
 
 # Testing
 npm test                          # Jest tests
-npx playwright test              # E2E tests
+npx playwright test              # All E2E tests
 npm run test:production          # Production health validation
 
 # Windows helpers
@@ -47,17 +45,16 @@ kill-node-server.bat
 
 ## Critical Architecture
 
-### Complete Business Logic Integration (ENTERPRISE)
+### Complete Business Logic Integration
 Full product-to-article mapping ensuring 100% inventory-recipe synchronization:
 ```
 150 Legacy Products → Article Mapping → 162 Available Products
     ↓                      ↓                    ↓
 Supplier Articles → Neutral Articles → Recipe Ingredients → Cost Calculation
 ```
-- **Complete Coverage**: All 150+ canteen products mapped to article system
-- **Intelligent Mapping**: Auto-mapping with fuzzy matching for product names  
+- **Complete Coverage**: All 150+ canteen products mapped to article system via `scripts/map-products-to-articles.js`
+- **Intelligent Mapping**: Auto-mapping with fuzzy matching for product names
 - **Business Continuity**: Order → Receipt → Recipe → Cost → Invoice workflow
-- **Enterprise Quality**: 6/6 business logic tests passing (100% score)
 
 ### Database Architecture
 ```javascript
@@ -65,7 +62,7 @@ Supplier Articles → Neutral Articles → Recipe Ingredients → Cost Calculati
 const dbType = process.env.DB_TYPE || 'memory';
 const db = dbType === 'postgres' ? require('./database/postgres-adapter') : require('./database/db-memory');
 ```
-- **memory**: Resets on restart, includes test data
+- **memory**: Resets on restart, includes test data from `database/canteen-test-data.js`
 - **postgres**: Persistent, requires external DB
 
 ### Multi-Tenant Pattern
@@ -74,7 +71,7 @@ All requests require `x-tenant-id` header:
 // Frontend
 headers: { 'x-tenant-id': 'demo' }
 
-// Backend fallback logic
+// Backend fallback logic in routes/products.js:46
 item.tenant_id === req.tenantId || item.tenant_id === 'demo' || item.tenant_id === 1
 ```
 ⚠️ Mixed types: numeric `1` vs string `'demo'` require careful handling
@@ -85,6 +82,7 @@ Single file `foodsuite-complete-app.html`:
 - Bootstrap 5 UI with modals
 - Drag-drop meal planning with cost tracking
 - Real-time inventory status indicators
+- Tab system using custom `window.showTab()` bypassing Bootstrap tabs
 
 ### AI Meal Planning
 Rule-based system in `routes/ai.js`:
@@ -104,16 +102,16 @@ Rule-based system in `routes/ai.js`:
 
 ### Undefined Article Numbers
 **Cause**: Legacy product system instead of new article system
-**Fix**: Run migration: recipes now use `supplier_article_id` + `neutral_article_id`
+**Fix**: Run migration - recipes now use `supplier_article_id` + `neutral_article_id`
 
-### Port 3003 Already in Use
+### Port 3005 Already in Use
 ```bash
 taskkill /F /IM node.exe  # Windows
 kill-node-server.bat      # Helper script
 ```
 
 ### CORS with file://
-Server accepts `null` and `file://` origins - ensure server is running
+Server accepts `null` and `file://` origins - ensure server is running (see server.js:74-96)
 
 ## API Endpoints
 
@@ -124,12 +122,10 @@ Enterprise endpoints with complete business logic integration:
 - `/api/ai/suggest-meals` - POST with mode, returns 21 meals with real cost data
 - `/api/inventory` - Stock tracking with enhanced status calculations
 - `/api/inventory/alerts` - Inventory warnings (critical/low/reorder)
-- `/api/inventory/low-stock` - Products below minimum stock
 - `/api/goods-receipts` - Warehouse receiving (GET/POST/GET :id/items)
 - `/api/automation-settings` - GET/PUT automation configuration + business recommendations
-- `/api/health` - **NEW**: System health monitoring with metrics
-- `/api/health/deep` - **NEW**: Comprehensive dependency health checks
-- `/api/health/metrics` - **NEW**: Performance and error tracking
+- `/api/health` - System health monitoring with metrics
+- `/api/health/deep` - Comprehensive dependency health checks
 - `/api/suppliers` - Supplier management with price comparison data
 - `/api/users` + `/api/auth` - JWT authentication
 - `/api/price-monitoring` - Price alerts and monitoring
@@ -142,37 +138,81 @@ Enterprise endpoints with complete business logic integration:
 - Health check: `/health`
 - Auto-deploys from GitHub main branch
 - Environment: `DB_TYPE=memory` (default)
+- Service name: `foodsuite-3` (configured in CORS origins)
 
 ### Local Testing Flow
 1. `node server.js`
-2. Open http://localhost:3005  
+2. Open http://localhost:3005
 3. Login: admin/Demo123!
 4. Test KI: Click "KI-Plan erstellen" in Speiseplanung
 
-## Enterprise-Grade Business Logic Implementation (August 2025)
+## Production-Grade Architecture
 
-### 1. Complete Product-Article Integration
-- **Problem Solved**: Missing inventory items in recipe dropdowns (Blumenkohl, Apfelsaft)
-- **Solution**: 100% product-to-article mapping with intelligent auto-assignment
-- **Result**: 162 products available (12 supplier + 150 mapped legacy)
-- **Quality Score**: 6/6 business logic tests passing (100%)
+### Health Monitoring System
+- **HealthMonitor middleware**: `middleware/health-monitor.js` tracks metrics
+- **Endpoints**: `/api/health`, `/api/health/deep`, `/api/health/metrics`
+- **Auto-rollback**: Deployment fails if health checks don't pass
 
-### 2. Production-Grade Architecture
-- **Multi-environment pipeline**: Development → Staging → Production
-- **Health monitoring**: `/api/health`, `/api/health/deep`, `/api/health/metrics`
-- **Automatic backups**: 6-hour intervals with 7-day retention
-- **Feature flags**: Gradual rollouts with tenant-specific controls
-- **Zero-downtime deployments**: Auto-rollback on health check failures
+### Feature Flags System
+- **FeatureFlags class**: `middleware/feature-flags.js` for gradual rollouts
+- **Tenant-specific features**: Enable features per tenant
+- **Safe deployments**: Test features with specific tenants first
 
-### 3. Business Logic Validation Systems
-- **Direct API testing**: `node test-direct-api.js` validates all integrations
-- **Product availability**: All 150+ products searchable and selectable
-- **Recipe integration**: Complete inventory → recipe → cost calculation pipeline
-- **Supplier relationships**: Full price comparison and monitoring capabilities
+### Backup System
+- **BackupSystem class**: `scripts/backup-system.js` handles automatic backups
+- **6-hour intervals**: Automatic backup schedule with 7-day retention
+- **CLI interface**: `node scripts/production-cli.js backup --create`
+
+### Deployment Pipeline
+- **Pipeline script**: `scripts/deployment-pipeline.js` orchestrates deployments
+- **Multi-environment**: Development → Staging → Production workflow
+- **Zero-downtime**: Health checks prevent breaking deployments
+
+## Data Architecture
+
+### In-Memory Database Structure (`database/db-memory.js`)
+Complex data relationships across multiple entities:
+```javascript
+{
+  // Legacy system (being phased out)
+  products: [],                    // Old product system
+  recipe_ingredients: [],          // Legacy ingredient refs
+
+  // NEW Article System (current)
+  neutral_articles: [],            // Generic articles (Zwiebeln, Gewürze)
+  supplier_articles: [],           // Concrete supplier products with prices
+  recipe_ingredients_new: [],      // Links recipes to articles
+
+  // Core business entities
+  recipes: [],                     // 75+ demo recipes with cost calculations
+  suppliers: [],                   // 7 suppliers with rating system
+  orders: [],                      // Purchase orders with multi-state workflow
+  goods_receipts: [],              // Warehouse receiving with items
+  inventory_transactions: [],      // Stock movements tracking
+
+  // Multi-tenant system
+  tenants: [],                     // Tenant isolation
+  users: [],                       // User management with roles
+  user_sessions: []                // Session-based auth
+}
+```
+
+### Product-Article Mapping (`scripts/map-products-to-articles.js`)
+Maps all 150 legacy products to supplier/neutral articles:
+- **Direct Mapping**: Exact product name matches (e.g., "Blumenkohl" → supplier_article_id: 1020)
+- **Fuzzy Matching**: Similar name detection with word analysis
+- **Auto Mapping**: Category-based intelligent assignment (137 products)
+- **API Integration**: `getProducts()` returns combined supplier_articles + mapped products
+
+### Frontend Event Handling
+- **Global Functions**: All onclick handlers need `window.*` scope
+- **Generic Button Handler**: Central click dispatcher with skip-list for standard UI buttons
+- **Modal Pattern**: Dynamic Bootstrap modal creation with cleanup on hide
+- **Tab System**: Custom `showTab()` function bypasses Bootstrap for complex workflows
 
 ## Testing Approach
 
-No formal test framework - use direct execution:
+Direct test execution without formal framework:
 ```bash
 node test-inventory-direct.js      # API tests
 node test-ai-api-debug.js         # Debug specific features
@@ -183,20 +223,10 @@ Windows users: Use provided `.bat` scripts for common operations.
 
 ## Critical Development Notes
 
-### Frontend Event Handling
-- **Global Functions**: All interactive functions must be in `window.*` scope for onclick handlers
-- **Generic Button Handler**: Central click handler in `foodsuite-complete-app.html` handles fallbacks
-- **Skip List**: Standard UI buttons (`['Wareneingang', 'Schließen', 'Abbrechen', 'Details', 'Bearbeiten', 'Speichern']`) bypass generic handler
-
-### Modal System
-- All modals use Bootstrap 5 with dynamic creation via `document.createElement('div')`
-- Pattern: Create → Append → `new bootstrap.Modal()` → Show → Remove on hide
-- Always include proper cleanup: `modal.addEventListener('hidden.bs.modal', () => document.body.removeChild(modal))`
-
-### Data Loading Pattern
-- Demo data loading functions (e.g., `loadPriceMonitoring()`, `loadAnalytics()`) use direct DOM manipulation
-- No external chart libraries - simple HTML/CSS fallbacks for charts
-- API calls with tenant validation: `headers: { 'x-tenant-id': TENANT_ID }`
+### Authentication Notes
+- Most API routes have auth disabled for demo (`// const { authenticate } = require('../middleware/auth-middleware');`)
+- Routes that still require auth: goods receipt POST (legacy)
+- Frontend uses session-based auth, not JWT for most operations
 
 ### Phase 2 Features
 Features marked with `🚧 PHASE 2:` in toast messages:
@@ -205,112 +235,7 @@ Features marked with `🚧 PHASE 2:` in toast messages:
 - Advanced price monitoring automation
 - Full goods receipt item tracking
 
-### Authentication Notes
-- Most API routes have auth disabled for demo (`// const { authenticate } = require('../middleware/auth-middleware');`)
-- Routes that still require auth: goods receipt POST (legacy)
-- Frontend uses session-based auth, not JWT for most operations
-
-## Data Architecture Deep Dive
-
-### In-Memory Database Structure (`database/db-memory.js`)
-Complex data relationships across multiple entities:
-```javascript
-{
-  // Legacy system (being phased out)
-  products: [],                    // Old product system
-  recipe_ingredients: [],          // Legacy ingredient refs
-  
-  // NEW Article System (current)
-  neutral_articles: [],            // Generic articles (Zwiebeln, Gewürze)
-  supplier_articles: [],           // Concrete supplier products with prices
-  recipe_ingredients_new: [],      // Links recipes to articles
-  
-  // Core business entities
-  recipes: [],                     // 75+ demo recipes with cost calculations
-  suppliers: [],                   // 7 suppliers with rating system
-  orders: [],                      // Purchase orders with multi-state workflow
-  goods_receipts: [],              // Warehouse receiving with items
-  inventory_transactions: [],      // Stock movements tracking
-  
-  // Multi-tenant system
-  tenants: [],                     // Tenant isolation
-  users: [],                       // User management with roles
-  user_sessions: []                // Session-based auth
-}
-```
-
-### Product-Article Integration System (`scripts/map-products-to-articles.js`)
-Enterprise-grade mapping ensuring ALL products are available for recipes:
-```javascript
-// Automatic server startup process:
-1. Load 150 legacy products from canteen-test-data.js
-2. Apply intelligent product-to-article mappings (fuzzy + auto)
-3. Enhanced getProducts() returns both supplier_articles + mapped_products = 162 total
-4. Recipe dropdowns show ALL inventory items (Blumenkohl, Apfelsaft, etc.)
-```
-- **Direct Mapping**: Exact product name matches (13 products)
-- **Fuzzy Matching**: Similar name detection with word analysis
-- **Auto Mapping**: Category-based intelligent assignment (137 products)
-- **API Integration**: Combined supplier articles + legacy products in single endpoint
-
-### Frontend Architecture Patterns
-Single-file application with sophisticated state management:
-
-**Tab System:** Custom implementation bypassing Bootstrap tabs for complex workflows
-```javascript
-window.showTab(tabId) // Hide all, show target, trigger data loading
-```
-
-**Modal Creation Pattern:** Dynamic Bootstrap modals for all interactions
-```javascript
-const modal = document.createElement('div');
-modal.className = 'modal fade';
-modal.innerHTML = `...`;
-document.body.appendChild(modal);
-const bsModal = new bootstrap.Modal(modal);
-bsModal.show();
-modal.addEventListener('hidden.bs.modal', () => document.body.removeChild(modal));
-```
-
-**Generic Button Handler:** Central click dispatcher with intelligent fallbacks
-```javascript
-// Handles all buttons without specific onclick handlers
-// Skip-list prevents standard UI buttons from showing "preparation" messages
-```
-
-### Deployment Considerations
-- **Render Service Name**: `foodsuite-3` (configured in CORS origins)
-- **Auto-deployment**: Pushes to `main` branch trigger automatic Render deployment
-- **Health Check**: `/api/health` endpoint for monitoring
-- **Environment**: Memory DB reset on each deployment (no persistence)
-
-## Advanced Architecture Insights
-
-### AI Meal Planning Engine (`routes/ai.js`)
-Rule-based optimization system with multiple strategies:
-```javascript
-// Frontend sends mapped modes (cost → cost_optimized)
-const modeMapping = { cost: 'cost_optimized', nutrition: 'balanced_nutrition' };
-// Backend applies weights: cost=0.7, nutrition=0.2, variety=0.1 for cost_optimized
-```
-- Returns 21 meals (7 days × 3 meals) with cost calculations
-- Uses real recipe cost data from article system
-- Filters by dietary restrictions and inventory availability
-
-### Cost Calculation Pipeline
-Complex multi-stage cost resolution:
-1. **Recipe Level**: `database/article-system.js` calculates costs per recipe
-2. **API Level**: `routes/recipes.js` provides cost breakdown with confidence levels
-3. **Frontend Level**: Real-time cost updates in meal planning drag-drop
-
 ### Error Handling Architecture
 - **Backend**: Consistent `{ error: "message" }` format across all routes
-- **Frontend**: Central `api.js` wrapper with tenant header injection
+- **Frontend**: Toast notifications for user feedback
 - **Fallbacks**: Demo data loading when APIs fail, preventing blank screens
-
-### Render.com Deployment Notes
-Current deployment uses service name `foodsuite-3.onrender.com`:
-- CORS configured for production domain
-- Automatic deployment from GitHub main branch
-- Memory database resets on each deploy
-- Health checks prevent deployment failures
