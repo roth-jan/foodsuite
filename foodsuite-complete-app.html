@@ -2313,8 +2313,18 @@
                                 <h5 class="mb-0">Rezeptliste</h5>
                             </div>
                             <div class="col-auto">
+                                <select class="form-select form-select-sm me-2" id="recipeCategoryFilter" onchange="filterRecipes()">
+                                    <option value="">Alle Kategorien</option>
+                                    <option value="breakfast">Frühstück</option>
+                                    <option value="lunch">Mittagessen</option>
+                                    <option value="dinner">Abendessen</option>
+                                    <option value="Dessert">Dessert</option>
+                                    <option value="Beilage">Beilage</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="recipeSearch" placeholder="Suche...">
+                                    <input type="text" class="form-control" id="recipeSearch" placeholder="Suche Name/Nummer...">
                                     <button class="btn btn-outline-secondary" type="button" onclick="filterRecipes()">
                                         <i class="bi bi-search"></i>
                                     </button>
@@ -7082,20 +7092,35 @@
 
         window.filterRecipes = function() {
             const searchTerm = document.getElementById('recipeSearch').value.toLowerCase();
+            const categoryFilter = document.getElementById('recipeCategoryFilter').value;
 
-            if (!searchTerm) {
-                displayRecipes(allRecipes);
-                return;
+            let filtered = [...allRecipes];
+
+            // Filter by search term
+            if (searchTerm) {
+                filtered = filtered.filter(recipe => {
+                    const recipeNumber = recipe.recipe_number || recipe.id?.toString() || '';
+                    return recipe.name.toLowerCase().includes(searchTerm) ||
+                           recipeNumber.toString().toLowerCase().includes(searchTerm) ||
+                           (recipe.category && recipe.category.toLowerCase().includes(searchTerm)) ||
+                           (recipe.tags && recipe.tags.toLowerCase().includes(searchTerm));
+                });
             }
 
-            const filtered = allRecipes.filter(recipe => {
-                return recipe.name.toLowerCase().includes(searchTerm) ||
-                       (recipe.recipe_number && recipe.recipe_number.toLowerCase().includes(searchTerm)) ||
-                       (recipe.category && recipe.category.toLowerCase().includes(searchTerm)) ||
-                       (recipe.tags && recipe.tags.toLowerCase().includes(searchTerm));
-            });
+            // Filter by category
+            if (categoryFilter) {
+                filtered = filtered.filter(recipe => {
+                    return recipe.category === categoryFilter;
+                });
+            }
 
             displayRecipes(filtered);
+
+            // Update results counter
+            const resultsInfo = document.getElementById('recipeResultsInfo');
+            if (resultsInfo) {
+                resultsInfo.textContent = `${filtered.length} von ${allRecipes.length} Rezepten`;
+            }
         }
 
         window.sortRecipes = function(column) {
