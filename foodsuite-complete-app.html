@@ -2236,10 +2236,11 @@
                                         <th>Artikelnummer</th>
                                         <th>Name</th>
                                         <th>Kategorie</th>
-                                        <th>Preis</th>
-                                        <th>Lagerbestand</th>
                                         <th>Lieferant</th>
-                                        <th>Status</th>
+                                        <th>Gebinde</th>
+                                        <th>Einheit</th>
+                                        <th>Preis/Einheit</th>
+                                        <th>Lagerbestand</th>
                                         <th>Aktionen</th>
                                     </tr>
                                 </thead>
@@ -2326,9 +2327,9 @@
                             <table class="table table-hover" id="recipesTable">
                                 <thead>
                                     <tr>
-                                        <th onclick="sortRecipes('number')" style="cursor: pointer;">Rezeptnr. <i class="bi bi-arrow-down-up"></i></th>
-                                        <th onclick="sortRecipes('name')" style="cursor: pointer;">Rezeptname <i class="bi bi-arrow-down-up"></i></th>
-                                        <th onclick="sortRecipes('category')" style="cursor: pointer;">Rezeptklasse <i class="bi bi-arrow-down-up"></i></th>
+                                        <th onclick="sortRecipes('number')" style="cursor: pointer;">Rezepturnummer <i class="bi bi-arrow-down-up"></i></th>
+                                        <th onclick="sortRecipes('name')" style="cursor: pointer;">Rezepturname <i class="bi bi-arrow-down-up"></i></th>
+                                        <th onclick="sortRecipes('category')" style="cursor: pointer;">Rezepturklasse <i class="bi bi-arrow-down-up"></i></th>
                                         <th onclick="sortRecipes('portions')" style="cursor: pointer;">Portionen <i class="bi bi-arrow-down-up"></i></th>
                                         <th onclick="sortRecipes('cost')" style="cursor: pointer;">Wareneinsatz <i class="bi bi-arrow-down-up"></i></th>
                                         <th>Aktionen</th>
@@ -6789,7 +6790,7 @@
         window.loadProducts = async function loadProducts() {
             console.log('Loading products...');
             const tbody = document.getElementById('productsTableBody');
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center">Lade Produkte...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Lade Produkte...</td></tr>';
             
             try {
                 console.log('Calling API...');
@@ -6810,20 +6811,32 @@
                 tbody.innerHTML = '';
                 
                 if (products.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Keine Produkte gefunden</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Keine Produkte gefunden</td></tr>';
                     return;
                 }
-                
+
                 products.forEach(product => {
                     const row = document.createElement('tr');
-                    
+
                     const stockLevel = getStockLevel(product.stock, product.min_stock);
                     const stockPercent = Math.min(100, (product.stock / product.min_stock) * 50);
-                    
+
+                    // Get supplier name - handle different data structures
+                    const supplierName = product.supplier?.name ||
+                                       product.supplier_name ||
+                                       (product.supplier_id ? `Lieferant ${product.supplier_id}` : 'Kein Lieferant');
+
+                    // Get packaging info
+                    const packaging = product.packaging || product.package_type || 'Karton';
+                    const packageSize = product.package_size || 12;
+
                     row.innerHTML = `
-                        <td><strong>${product.article_number}</strong></td>
+                        <td><strong>${product.article_number || product.id}</strong></td>
                         <td>${product.name}</td>
-                        <td><span class="badge bg-secondary">${product.category ? product.category.name : 'Ohne Kategorie'}</span></td>
+                        <td><span class="badge bg-secondary">${product.category || 'Ohne Kategorie'}</span></td>
+                        <td>${supplierName}</td>
+                        <td>${packaging} (${packageSize} ${product.unit})</td>
+                        <td>${product.unit}</td>
                         <td><strong>€${product.price.toFixed(2)}</strong></td>
                         <td>
                             <div class="d-flex align-items-center">
@@ -6833,14 +6846,12 @@
                                 <span>${product.stock} ${product.unit}</span>
                             </div>
                         </td>
-                        <td><small class="text-muted">${product.supplier ? product.supplier.name : 'Kein Lieferant'}</small></td>
-                        <td><span class="badge bg-${product.status === 'active' ? 'success' : 'danger'}">${product.status === 'active' ? 'Aktiv' : 'Inaktiv'}</span></td>
                         <td>
                             <div class="table-actions">
                                 <button class="btn btn-sm btn-outline-primary" data-action="viewProductDetails" data-param="${product.id}" title="Details">
                                     <i class="bi bi-eye"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-info" data-action="showPriceHistory" data-param="${product.id}" title="Preisverlauf">
+                                <button class="btn btn-sm btn-outline-info" data-action="showPriceHistory" data-param="${product.id}" title="Preishistorie">
                                     <i class="bi bi-graph-up"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary" data-action="editProductDetails" data-param="${product.id}" title="Bearbeiten">
