@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: foodsuite-pro
+    name: foodsuite
     runtime: node
     plan: free
     buildCommand: npm install --production
